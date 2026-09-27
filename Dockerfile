@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -o /out/jikeqingpan ./cmd/jikeqingpan
 
 # ---- runtime ----
-FROM alpine:3.22
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata \
   && adduser -D -H -u 10001 appuser
