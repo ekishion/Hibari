@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # 使用 --platform=$BUILDPLATFORM 让编译阶段始终运行在宿主机原生 CPU 架构上（极速构建，避免 QEMU 软仿真开销）
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 WORKDIR /src
 
 RUN apk add --no-cache ca-certificates
