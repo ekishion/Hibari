@@ -16,7 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ekishion/jikeqingpan/internal/app"
+	"github.com/ekishion/jikeqingpan/internal/config"
+	"github.com/ekishion/jikeqingpan/internal/server"
 	"github.com/ekishion/jikeqingpan/web"
 )
 
@@ -31,21 +32,21 @@ func main() {
 	configPath := flag.String("config", defaultConfig, "配置文件路径（也可用环境变量 CONFIG_PATH）")
 	flag.Parse()
 
-	cfg, err := app.LoadConfig(*configPath)
+	cfg, err := config.LoadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("加载配置失败: %v", err)
 	}
-	app.WarnRiskyConfig(cfg)
+	config.WarnRiskyConfig(cfg)
 
-	srv := app.NewServer(cfg, web.FS, version)
+	srv := server.NewServer(cfg, web.FS, version)
 
 	addr := net.JoinHostPort(cfg.BindAddress, strconv.Itoa(cfg.Port))
-	server := &http.Server{
+	srvHTTP := &http.Server{
 		Addr:              addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      app.WriteTimeoutFor(cfg),
+		WriteTimeout:      server.WriteTimeoutFor(cfg),
 		IdleTimeout:       60 * time.Second,
 	}
 
@@ -60,7 +61,7 @@ func main() {
 				log.Printf("[WARN] 正在监听所有网卡且未设置 access_token，存在未授权访问风险")
 			}
 		}
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srvHTTP.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("服务异常退出: %v", err)
 		}
 	}()
@@ -71,7 +72,7 @@ func main() {
 	log.Printf("正在优雅关闭…")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
+	if err := srvHTTP.Shutdown(ctx); err != nil {
 		log.Printf("关闭服务失败: %v", err)
 	}
 	srv.Close()

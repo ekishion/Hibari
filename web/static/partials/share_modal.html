@@ -1,0 +1,139 @@
+{{define "share_modal"}}
+  <!-- 分享二级弹窗 -->
+  <div id="share-overlay" class="modal-overlay" hidden aria-hidden="true">
+    <div class="share-card" role="dialog" aria-modal="true" aria-labelledby="share-dialog-title">
+      <div class="share-card-header">
+        <div class="share-card-title-group">
+          <span class="share-mark" data-icon="share-2" aria-hidden="true"></span>
+          <h2 id="share-dialog-title">创建分享</h2>
+        </div>
+        <button type="button" id="share-close" class="modal-close" aria-label="关闭分享窗口">
+          <span data-icon="x" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <!-- 分享目标卡片 -->
+      <div class="share-target-card">
+        <div class="share-target-icon" id="share-target-icon">
+          <span data-icon="folder" aria-hidden="true"></span>
+        </div>
+        <div class="share-target-meta">
+          <div class="share-target-name" id="share-target-name">文件夹名称</div>
+          <div class="share-target-sub" id="share-target-sub">目录 · 永久有效</div>
+        </div>
+      </div>
+
+      <!-- 分享设置表单 -->
+      <div id="share-form-panel" class="share-form-panel">
+        <div class="share-form-row">
+          <div class="share-form-label-group">
+            <label for="share-pwd-toggle" class="share-form-label">提取码保护</label>
+            <span class="share-form-desc">仅凭提取码方可浏览或下载</span>
+          </div>
+          <label class="switch-wrap">
+            <input type="checkbox" id="share-pwd-toggle" class="switch-input">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div id="share-pwd-box" class="share-pwd-box" hidden>
+          <div class="input-with-action">
+            <input type="text" id="share-pwd-input" placeholder="输入 6 位提取码" maxlength="16" autocomplete="off" spellcheck="false">
+            <button type="button" id="btn-share-pwd-random" class="btn btn-ghost btn-sm" title="随机生成 6 位提取码">
+              <span class="btn-icon" data-icon="sparkles" aria-hidden="true"></span>
+              <span>随机</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="share-form-row">
+          <div class="share-form-label-group">
+            <span class="share-form-label" id="label-share-expire">有效期</span>
+            <span class="share-form-desc">到期后链接将自动失效</span>
+          </div>
+          <div class="custom-select" id="wrap-share-expire">
+            <input type="hidden" id="share-expire-select" value="604800">
+            <button type="button" class="btn btn-ghost custom-select-trigger" id="btn-share-expire"
+              aria-haspopup="listbox" aria-expanded="false" aria-labelledby="label-share-expire btn-share-expire">
+              <span class="btn-label">7 天有效</span>
+              <span class="btn-icon select-caret" data-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="custom-select-menu" role="listbox" aria-labelledby="label-share-expire" hidden>
+              <button type="button" class="custom-select-option is-active" role="option" aria-selected="true" data-value="604800">7 天有效</button>
+              <button type="button" class="custom-select-option" role="option" aria-selected="false" data-value="86400">1 天有效</button>
+              <button type="button" class="custom-select-option" role="option" aria-selected="false" data-value="2592000">30 天有效</button>
+              <button type="button" class="custom-select-option" role="option" aria-selected="false" data-value="0">永久有效</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="share-form-row" id="share-max-uses-row">
+          <div class="share-form-label-group">
+            <span class="share-form-label" id="label-share-uses">下载次数限制</span>
+            <span class="share-form-desc">达到上限后短链自动销毁</span>
+          </div>
+          <div class="custom-select" id="wrap-share-uses">
+            <input type="hidden" id="share-uses-select" value="0">
+            <button type="button" class="btn btn-ghost custom-select-trigger" id="btn-share-uses"
+              aria-haspopup="listbox" aria-expanded="false" aria-labelledby="label-share-uses btn-share-uses">
+              <span class="btn-label">不限次数</span>
+              <span class="btn-icon select-caret" data-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="custom-select-menu" role="listbox" aria-labelledby="label-share-uses" hidden>
+              <button type="button" class="custom-select-option is-active" role="option" aria-selected="true" data-value="0">不限次数</button>
+              <button type="button" class="custom-select-option" role="option" aria-selected="false" data-value="1">仅限 1 次 (阅后即焚)</button>
+              <button type="button" class="custom-select-option" role="option" aria-selected="false" data-value="5">限制 5 次</button>
+              <button type="button" class="custom-select-option" role="option" aria-selected="false" data-value="10">限制 10 次</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="share-actions">
+          <button type="button" id="btn-create-share" class="btn btn-primary btn-block">
+            <span class="btn-icon" data-icon="link" aria-hidden="true"></span>
+            <span>生成分享链接与二维码</span>
+          </button>
+          <div class="share-footer-link-wrap">
+            <button type="button" class="btn-link-subtle" id="btn-open-shares-from-modal">查看已创建的分享记录</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分享结果展示卡片 -->
+      <div id="share-result-panel" class="share-result-panel" hidden>
+        <div class="share-link-group">
+          <div class="share-link-input-wrap">
+            <input type="text" id="share-result-url" readonly aria-label="分享链接">
+            <button type="button" id="btn-copy-share-url" class="btn btn-secondary btn-sm" aria-label="复制链接">
+              <span class="btn-icon" data-icon="copy" aria-hidden="true"></span>
+              <span>复制</span>
+            </button>
+          </div>
+          <div class="share-link-input-wrap" id="share-result-pwd-wrap" hidden>
+            <div class="share-pwd-input-box">
+              <span class="share-pwd-tag">提取码</span>
+              <input type="text" id="share-result-pwd" readonly aria-label="提取码">
+            </div>
+            <button type="button" id="btn-copy-share-pwd" class="btn btn-secondary btn-sm" aria-label="复制提取码">
+              <span class="btn-icon" data-icon="copy" aria-hidden="true"></span>
+              <span>复制</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 原生 SVG 二维码展示区 -->
+        <div class="share-qr-wrap">
+          <div id="share-qr-container" class="share-qr-container" aria-label="分享二维码"></div>
+          <div class="share-qr-tip">手机扫一扫，随时分享与下载</div>
+        </div>
+
+        <div class="share-result-actions">
+          <button type="button" id="btn-copy-share-full" class="btn btn-primary btn-block">
+            <span class="btn-icon" data-icon="copy-check" aria-hidden="true"></span>
+            <span>复制完整分享文案</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{{end}}

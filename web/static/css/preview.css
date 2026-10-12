@@ -1,0 +1,251 @@
+/* ===== 多媒体预览与 Lightbox 灯箱 ===== */
+#image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 64px 20px 64px;
+  background: rgba(0, 0, 0, 0.92);
+  overscroll-behavior: contain;
+}
+#image-lightbox[hidden] { display: none !important; }
+#lightbox-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+}
+#lightbox-image {
+  display: block;
+  max-width: min(94vw, 1280px);
+  max-height: calc(100svh - 128px);
+  object-fit: contain;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46);
+  cursor: zoom-in;
+  transition: transform 0.25s var(--ease-out);
+}
+#lightbox-image.is-zoomed {
+  transform: scale(2.2);
+  cursor: zoom-out;
+}
+#lightbox-text {
+  display: block;
+  max-width: min(94vw, 980px);
+  max-height: calc(100svh - 160px);
+  overflow: auto;
+  margin: 0;
+  padding: 20px 22px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(16, 16, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-md);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  white-space: pre;
+  tab-size: 4;
+}
+#lightbox-markdown {
+  max-width: min(94vw, 860px);
+  max-height: calc(100svh - 160px);
+  overflow: auto;
+  padding: 22px 26px;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(16, 16, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-md);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46);
+  font-size: 0.82rem;
+}
+/* 灯箱内 Markdown 面板：浅色令牌在深色底上不可读，这里覆盖为浅色文字 */
+#lightbox-markdown.md-content,
+#lightbox-markdown.md-content h1,
+#lightbox-markdown.md-content h2,
+#lightbox-markdown.md-content h3,
+#lightbox-markdown.md-content h4,
+#lightbox-markdown.md-content h5,
+#lightbox-markdown.md-content h6,
+#lightbox-markdown.md-content code { color: rgba(255, 255, 255, 0.9); }
+#lightbox-markdown.md-content p { white-space: pre-wrap; }
+
+/* ===== 自绘媒体播放器（替代原生 controls 的系统样式；灯箱恒为深底，用白色基元） ===== */
+#lightbox-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: min(94vw, 680px);
+}
+#lightbox-media[hidden] { display: none; }
+#lightbox-video {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100svh - 300px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-md);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46);
+  background: #000;
+  cursor: pointer;
+}
+/* 音频的旋转唱片：单色圆环 + 边缘轨道点 */
+.media-disc {
+  position: relative;
+  --disc: 170px;
+  width: var(--disc);
+  height: var(--disc);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.82);
+}
+.media-disc::before {
+  content: "";
+  position: absolute;
+  inset: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+}
+.media-disc-icon .icon { width: 42px; height: 42px; stroke-width: 1.5; }
+.media-disc-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+}
+.media-disc.is-playing .media-disc-dot {
+  animation: dot-orbit 4s linear infinite;
+}
+@keyframes dot-orbit {
+  from { transform: rotate(0deg) translateY(calc(var(--disc) / -2 + 16px)); }
+  to { transform: rotate(360deg) translateY(calc(var(--disc) / -2 + 16px)); }
+}
+.media-bar {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(20, 20, 22, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+.media-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.media-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.media-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28); }
+.media-btn .icon { width: 16px; height: 16px; }
+.media-seek {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+  cursor: pointer;
+  touch-action: none;
+}
+.media-track {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.media-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: 999px;
+  background: #fff;
+}
+.media-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.media-time {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.lightbox-nav:hover { background: rgba(255, 255, 255, 0.18); }
+.lightbox-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+.lightbox-nav:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28); }
+.lightbox-nav .icon { width: 22px; height: 22px; }
+.lightbox-prev { left: max(16px, env(safe-area-inset-left)); }
+.lightbox-next { right: max(16px, env(safe-area-inset-right)); }
+.lightbox-close {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.lightbox-close:hover { background: rgba(255, 255, 255, 0.18); }
+.lightbox-close:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.28); }
+.lightbox-close .icon { width: 20px; height: 20px; }
+#lightbox-caption {
+  position: absolute;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 40px);
+  overflow: hidden;
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(20, 20, 22, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

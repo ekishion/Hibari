@@ -10,180 +10,28 @@
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a0a0a'/%3E%3Cpath d='M17.5 17H9a4 4 0 1 1 3.8-5.2A3 3 0 0 1 17.5 17Z' fill='none' stroke='white' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E">
   <meta name="description" content="基于百度网盘青春版的极简文件中转站，支持文件夹浏览与安全下载。源自：如有乐享">
-  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/css/app.css">
 </head>
 
 <body>
-  <div id="login-overlay" hidden aria-hidden="true">
-    <div class="login-card" role="dialog" aria-modal="true" aria-labelledby="login-title">
-      <span class="login-mark" data-icon="shield-lock" aria-hidden="true"></span>
-      <h2 id="login-title">验证访问权限</h2>
-      <p>该网盘已开启访问保护，输入访问令牌即可浏览和下载文件。</p>
-      <form id="login-form" novalidate>
-        <label for="login-token">访问令牌</label>
-        <div class="input-wrap">
-          <span class="input-icon" data-icon="key-round" aria-hidden="true"></span>
-          <input id="login-token" name="access_token" type="password" autocomplete="current-password" required
-            placeholder="请输入访问令牌">
-        </div>
-        <div class="login-actions">
-          <button type="submit" id="btn-login" class="btn btn-primary">
-            <span class="btn-icon" data-icon="log-in" aria-hidden="true"></span>
-            <span class="btn-label">验证并进入</span>
-          </button>
-        </div>
-        <div id="login-error" class="login-error" hidden></div>
-      </form>
-    </div>
-  </div>
+  {{template "login_modal" .}}
+  {{template "lightbox" .}}
+  {{template "share_modal" .}}
+  {{template "shares_manage" .}}
+  {{template "unlock_modal" .}}
+  {{template "app_main" .}}
+  {{template "share_landing" .}}
 
-  <div id="image-lightbox" hidden aria-hidden="true">
-    <button id="lightbox-close" class="lightbox-close" type="button" aria-label="关闭预览">
-      <span data-icon="x" aria-hidden="true"></span>
-    </button>
-    <button id="lightbox-prev" class="lightbox-nav lightbox-prev" type="button" aria-label="上一张" hidden>
-      <span data-icon="chevron-left" aria-hidden="true"></span>
-    </button>
-    <button id="lightbox-next" class="lightbox-nav lightbox-next" type="button" aria-label="下一张" hidden>
-      <span data-icon="chevron-right" aria-hidden="true"></span>
-    </button>
-    <div id="lightbox-stage">
-      <img id="lightbox-image" alt="" hidden>
-      <div id="lightbox-markdown" class="md-content" hidden></div>
-      <pre id="lightbox-text" hidden></pre>
-      <div id="lightbox-media" class="lightbox-media" hidden>
-        <div id="media-disc" class="media-disc" hidden>
-          <span class="media-disc-dot" aria-hidden="true"></span>
-          <span class="media-disc-icon" data-icon="music" aria-hidden="true"></span>
-        </div>
-        <video id="lightbox-video" playsinline webkit-playsinline="true" x5-playsinline="true" hidden></video>
-        <audio id="lightbox-audio" hidden></audio>
-        <div class="media-bar">
-          <button type="button" class="media-btn" id="media-play" aria-label="播放">
-            <span class="btn-icon" data-icon="play" aria-hidden="true"></span>
-          </button>
-        <div id="media-seek" class="media-seek" role="slider" tabindex="0"
-          aria-label="播放进度" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00">
-          <div class="media-track">
-            <div id="media-fill" class="media-fill"></div>
-            <div id="media-thumb" class="media-thumb"></div>
-          </div>
-        </div>
-          <span id="media-time" class="media-time">0:00 / 0:00</span>
-          <button type="button" class="media-btn" id="media-mute" aria-label="静音">
-            <span class="btn-icon" data-icon="volume-2" aria-hidden="true"></span>
-          </button>
-          <button type="button" class="media-btn" id="media-fs" aria-label="全屏" hidden>
-            <span class="btn-icon" data-icon="maximize" aria-hidden="true"></span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <div id="lightbox-caption"></div>
-  </div>
-
-  <div class="container" id="app-main">
-    <header class="header">
-      <div class="brand">
-        <span class="brand-mark" data-icon="cloud" aria-hidden="true"></span>
-        <div class="brand-text">
-          <h1 class="wordmark">即刻轻盘</h1>
-          <p class="subtitle">百度网盘青春版 · 安全中转</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button type="button" class="btn btn-ghost" id="btn-theme" aria-label="切换深色模式">
-          <span class="btn-icon" data-icon="moon" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="btn btn-ghost" id="btn-login-open" hidden>
-          <span class="btn-icon" data-icon="log-in" aria-hidden="true"></span>
-          <span class="btn-label">登录</span>
-        </button>
-        <button type="button" class="btn btn-ghost" id="btn-logout" hidden>
-          <span class="btn-icon" data-icon="log-out" aria-hidden="true"></span>
-          <span class="btn-label">退出</span>
-        </button>
-      </div>
-    </header>
-
-    <nav class="breadcrumbs" id="breadcrumbs" aria-label="目录路径"></nav>
-
-    <div class="toolbar">
-      <span class="file-count" id="file-count">正在加载列表…</span>
-      <div class="toolbar-actions">
-        <label class="search-box" for="file-search">
-          <span data-icon="search" aria-hidden="true"></span>
-          <input id="file-search" type="search" autocomplete="off" placeholder="筛选当前目录" aria-label="筛选当前目录文件">
-        </label>
-        <div class="sort-group" role="group" aria-label="排序方式">
-          <button type="button" class="btn btn-ghost sort-trigger" id="btn-sort-field"
-            aria-haspopup="listbox" aria-expanded="false" aria-label="选择排序字段">
-            <span class="btn-label" id="sort-field-label">名称</span>
-            <span class="btn-icon sort-caret" data-icon="chevron-down" aria-hidden="true"></span>
-          </button>
-          <button type="button" class="btn btn-ghost btn-sort-dir" id="btn-sort-dir" aria-label="切换升序降序">
-            <span class="btn-icon" data-icon="arrow-up" aria-hidden="true"></span>
-          </button>
-          <div class="sort-menu" id="sort-menu" role="listbox" aria-label="排序字段" hidden>
-            <button type="button" class="sort-option is-active" role="option" aria-selected="true" data-key="name">名称</button>
-            <button type="button" class="sort-option" role="option" aria-selected="false" data-key="size">大小</button>
-            <button type="button" class="sort-option" role="option" aria-selected="false" data-key="time">时间</button>
-          </div>
-        </div>
-        <button type="button" class="btn btn-ghost btn-share" id="btn-share" hidden
-          aria-label="复制当前目录分享链接">
-          <span class="btn-icon" data-icon="link" aria-hidden="true"></span>
-          <span class="btn-label">分享</span>
-        </button>
-        <button class="btn btn-refresh" id="btn-refresh" type="button" aria-label="刷新当前目录">
-          <span class="btn-icon" data-icon="refresh-cw" aria-hidden="true"></span>
-          <span class="btn-label">刷新</span>
-        </button>
-      </div>
-    </div>
-
-    <div id="list-banner" hidden></div>
-    <section id="readme-panel" class="readme-panel" hidden aria-labelledby="readme-title">
-      <div class="readme-layout">
-        <div class="readme-main">
-          <div class="readme-heading">
-            <div class="readme-icon file-icon" aria-hidden="true">
-              <span data-icon="file-text"></span>
-            </div>
-            <div>
-              <h2 id="readme-title">目录说明</h2>
-              <p id="readme-source">README</p>
-            </div>
-          </div>
-          <div id="readme-content" class="md-content"></div>
-        </div>
-        <aside id="readme-overview" class="readme-overview" aria-label="目录概览"></aside>
-      </div>
-    </section>
-    <div id="file-list"></div>
-
-    <div id="status">
-      <div class="spinner" data-icon="loader" aria-hidden="true"></div>
-      <div class="status-tip">正在加载…</div>
-    </div>
-
-    <footer class="footer">
-      <a href="https://github.com/malaohu/jikeqingpan" target="_blank" rel="noopener noreferrer">
-        <span class="footer-icon" data-icon="github" aria-hidden="true"></span>GitHub
-      </a>
-      <a href="https://github.com/ekishion/jikeqingpan" target="_blank" rel="noopener noreferrer">
-        <span class="footer-icon" data-icon="github" aria-hidden="true"></span>GitHub(二改)
-      </a>
-      <a href="https://n.eki.ink" target="_blank" rel="noopener noreferrer">
-        <span class="footer-icon" data-icon="sparkles" aria-hidden="true"></span>梦澪の茶话会
-      </a>
-    </footer>
-  </div>
-
-  <script src="/icons.js"></script>
-  <script src="/markdown.js"></script>
-  <script src="/app.js"></script>
-  <script src="/preview.js"></script>
+  <script src="/js/core/icons.js"></script>
+  <script src="/js/core/markdown.js"></script>
+  <script src="/js/core/qrcode.js"></script>
+  <script src="/js/core/api.js"></script>
+  <script src="/js/core/components.js"></script>
+  <script src="/js/modules/file_browser.js"></script>
+  <script src="/js/modules/share_modal.js"></script>
+  <script src="/js/modules/share_page.js"></script>
+  <script src="/js/modules/preview.js"></script>
+  <script src="/js/app.js"></script>
 </body>
 
 </html>

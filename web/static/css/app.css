@@ -1,0 +1,11 @@
+/* ==========================================================================
+   即刻轻盘 · 统一主样式表
+   按功能模块解耦划分：Base / Components / Browser / Modals / Preview / Landing
+   ========================================================================== */
+
+@import "./base.css";
+@import "./components.css";
+@import "./browser.css";
+@import "./modals.css";
+@import "./preview.css";
+@import "./landing.css";

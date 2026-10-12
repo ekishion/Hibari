@@ -1,0 +1,233 @@
+/* ==========================================================================
+   即刻轻盘 · app.css
+   设计语言：纯白极简 · 单色墨黑（Swiss / editorial）。
+   无任何渐变、无彩色光晕；靠留白、发丝描边、精准排版与克制动效出「设计师味」。
+   语义色仅用于功能反馈（错误/警告/成功），装饰一律单色。
+   ========================================================================== */
+
+/* ===== 设计令牌（浅色 = 纯白基准） ===== */
+:root {
+  color-scheme: light dark;
+
+  /* 墨与反相（主按钮 / 品牌标记随主题自动反色） */
+  --ink: #0a0a0a;          /* 主色：近黑墨 */
+  --ink-contrast: #ffffff; /* 反相：用于墨底上的文字/图标 */
+
+  /* 表面 */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #fafafa;
+  --surface-sunken: #f4f4f5;
+  --elevated: #ffffff;
+
+  /* 文字 */
+  --text: #0a0a0a;
+  --text-2: #52525b;
+  --text-3: #71717a;
+
+  /* 线条 */
+  --border: #e7e7ea;
+  --border-strong: #d4d4d8;
+  --hairline: #efeff1;
+
+  /* 焦点环 */
+  --ring: rgba(10, 10, 10, 0.40);
+
+  /* 语义色（仅功能反馈） */
+  --success: #15803d;
+  --danger: #dc2626;
+  --warning: #b45309;
+  --info: #3f3f46;
+
+  /* 阴影（纯中性、极克制） */
+  --shadow-sm: 0 1px 2px rgba(9, 9, 11, 0.05);
+  --shadow-md: 0 6px 20px -10px rgba(9, 9, 11, 0.16), 0 1px 2px rgba(9, 9, 11, 0.05);
+  --shadow-lg: 0 28px 56px -24px rgba(9, 9, 11, 0.28), 0 4px 12px -6px rgba(9, 9, 11, 0.10);
+
+  /* 几何与动效 */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular,
+    Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* 手动切换到浅色：表单控件/滚动条随主题固定 */
+:root[data-theme="light"] { color-scheme: light; }
+
+/* 主题应用方式（两处挂同一组深色令牌，修改时需同步）：
+   1) :root[data-theme="dark"] —— 用户手动选择深色；
+   2) @media 内 :root:not([data-theme="light"]) —— 未做选择时跟随系统（含 JS 生效前的首帧）。 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #fafafa;
+  --ink-contrast: #0a0a0a;
+
+  --bg: #0a0a0b;
+  --surface: #131315;
+  --surface-hover: #1a1a1d;
+  --surface-sunken: #1c1c20;
+  --elevated: #161619;
+
+  --text: #fafafa;
+  --text-2: #d4d4d8;
+  --text-3: #a1a1aa;
+
+  --border: #26262b;
+  --border-strong: #3a3a42;
+  --hairline: #1e1e22;
+
+  --ring: rgba(250, 250, 250, 0.50);
+
+  --success: #4ade80;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --info: #d4d4d8;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 32px 64px -24px rgba(0, 0, 0, 0.8), 0 6px 16px -8px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ink: #fafafa;
+    --ink-contrast: #0a0a0a;
+
+    --bg: #0a0a0b;
+    --surface: #131315;
+    --surface-hover: #1a1a1d;
+    --surface-sunken: #1c1c20;
+    --elevated: #161619;
+
+    --text: #fafafa;
+    --text-2: #d4d4d8;
+    --text-3: #a1a1aa;
+
+    --border: #26262b;
+    --border-strong: #3a3a42;
+    --hairline: #1e1e22;
+
+    --ring: rgba(250, 250, 250, 0.50);
+
+    --success: #4ade80;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --info: #d4d4d8;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 32px 64px -24px rgba(0, 0, 0, 0.8), 0 6px 16px -8px rgba(0, 0, 0, 0.6);
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* 组件 display 会覆盖 hidden 属性的默认 display:none，这里统一兜底 */
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  padding: clamp(28px, 6vw, 76px) 18px 96px;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+body.lightbox-open { overflow: hidden; }
+
+/* ===== 布局容器与图标基元 ===== */
+/* ===== 布局容器 ===== */
+.container {
+  max-width: 840px;
+  margin: 0 auto;
+  animation: rise-in 0.6s var(--ease-out) both;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ===== 图标基元 ===== */
+.icon {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  vertical-align: middle;
+}
+
+
+/* ===== 页脚 ===== */
+/* ===== 页脚 ===== */
+.footer {
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  font-size: 0.8rem;
+}
+.footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.footer a:hover { color: var(--text); }
+.footer-icon { display: inline-flex; }
+.footer-icon .icon { width: 15px; height: 15px; }
+
+
+/* ===== 无障碍：降低动态 ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spinner .icon,
+  .toast-loading .toast-icon .icon,
+  .btn-refresh:disabled .icon { animation: spin 1s linear infinite !important; }
+}
+
+/* 键盘可达性：统一焦点环 */
+:focus-visible { outline: none; }
+.btn:focus-visible,
+.breadcrumb-item:focus-visible,
+.footer a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+  border-radius: var(--r-sm);
+}

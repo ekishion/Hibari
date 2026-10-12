@@ -96,7 +96,7 @@ X-CSRF-Token: <csrf_token>
 
 - 令牌 32 位 hex，有效期默认 7 天（`dir_link_ttl_seconds`）
 - **隐藏的是路径，不是权限**：打开短链仍需登录，目录权限在使用时按 `allowed_paths` 重新校验
-- 配置 `state_backend`（`sqlite` / `json`）时，目录短链跨重启保留；未配置时重启失效
+- 配置 `state_backend`（`sqlite`）时，目录短链跨重启保留；未配置时重启失效
 - 文件列表接口接受 `{"token": "..."}`，响应中的 `resolved_dir` 为解析出的真实目录
 - 常见错误：`dirlink_failed`、`dirlink_not_found`（令牌过期或失效）
 
