@@ -9,7 +9,9 @@
   let authRequired = false;
   let authenticated = false;
   let uiConfig = { showReadme: true, showReadmeOverview: true, sharePasswordLength: 6 };
-  let sortState = { key: "name", dir: "asc" };
+  // 排序状态：以 const 持有并只做原地修改，因为该对象已挂到 root.sortState
+  // 供 file_browser 读取；一旦整体重新赋值，外部持有的就是过期引用。
+  const sortState = { key: "name", dir: "asc" };
   let lastFocusedBeforeModal = null;
 
   // ===== 主题管理 =====
@@ -55,7 +57,8 @@
       const parsed = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) || "null");
       if (parsed && ["name", "size", "time"].indexOf(parsed.key) !== -1 &&
         ["asc", "desc"].indexOf(parsed.dir) !== -1) {
-        sortState = { key: parsed.key, dir: parsed.dir };
+        sortState.key = parsed.key;
+        sortState.dir = parsed.dir;
       }
     } catch (e) { /* ignore */ }
     syncSortControls();
@@ -499,6 +502,11 @@
   root.doLogout = doLogout;
   root.requireLogin = requireLogin;
   root.showLogin = showLogin;
+  // 配置快照：checkAuth 拿到 /api/auth/status 后原地更新，
+  // 因此这里导出对象引用即可，各模块读到的永远是最新值。
+  root.uiConfig = uiConfig;
+  // 排序状态：同样只做原地修改，file_browser 的 sortFiles 直接读这个引用。
+  root.sortState = sortState;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initApp);

@@ -505,10 +505,15 @@
   }
 
   function checkAndLoadReadme(files, dir) {
+    const panel = document.getElementById("readme-panel");
+    // show_readme 关闭时整个面板不出现，也不必发请求
+    if (root.uiConfig && root.uiConfig.showReadme === false) {
+      if (panel) panel.hidden = true;
+      return;
+    }
     const readmeFile = (files || []).find(function (f) {
       return isReadmeFileName(f.server_filename || f.filename);
     });
-    const panel = document.getElementById("readme-panel");
     if (!readmeFile) {
       if (panel) panel.hidden = true;
       return;
@@ -576,6 +581,9 @@
     const aside = document.getElementById("readme-overview");
     if (!aside) return;
     aside.replaceChildren();
+
+    // show_readme_overview 关闭时不渲染，:has() 规则会顺带收起这一列
+    if (root.uiConfig && root.uiConfig.showReadmeOverview === false) return;
 
     const list = files || [];
     // 空目录没有可统计的内容，留空让 CSS 收起这一列
