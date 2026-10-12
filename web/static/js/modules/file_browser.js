@@ -388,18 +388,16 @@
     if (parentRow) container.appendChild(parentRow);
 
     if (!sorted.length) {
-      if (!parentRow) {
-        const empty = document.createElement("div");
-        empty.className = "empty-state";
-        const emptyIcon = document.createElement("div");
-        emptyIcon.className = "empty-icon";
-        if (typeof makeIcon === "function") emptyIcon.appendChild(makeIcon("folder-open"));
-        empty.appendChild(emptyIcon);
-        const p = document.createElement("p");
-        p.textContent = currentSearchQuery ? "未找到匹配的文件" : "此文件夹为空";
-        empty.appendChild(p);
-        container.appendChild(empty);
-      }
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      const emptyIcon = document.createElement("div");
+      emptyIcon.className = "empty-icon";
+      if (typeof makeIcon === "function") emptyIcon.appendChild(makeIcon("folder-open"));
+      empty.appendChild(emptyIcon);
+      const p = document.createElement("p");
+      p.textContent = currentSearchQuery ? "未找到匹配的文件" : "此文件夹为空";
+      empty.appendChild(p);
+      container.appendChild(empty);
       return;
     }
 
@@ -498,10 +496,17 @@
   }
 
   // ===== README 面板管理 =====
+  // 与 internal/server/handlers_preview.go 的 isReadmeFileName 保持一致，
+  // 否则服务端已支持的文件名（如无扩展名的 README）会被前端漏掉。
+  var README_FILE_NAMES = ["readme.md", "readme.markdown", "readme.txt", "readme"];
+
+  function isReadmeFileName(name) {
+    return README_FILE_NAMES.indexOf(String(name || "").toLowerCase()) >= 0;
+  }
+
   function checkAndLoadReadme(files, dir) {
     const readmeFile = (files || []).find(function (f) {
-      const name = (f.server_filename || f.filename || "").toLowerCase();
-      return name === "readme.md" || name === "readme.txt";
+      return isReadmeFileName(f.server_filename || f.filename);
     });
     const panel = document.getElementById("readme-panel");
     if (!readmeFile) {
@@ -538,10 +543,103 @@
             }
           }
         }
+        renderReadmeOverview(files);
       })
       .catch(function () {
         if (panel) panel.hidden = true;
       });
+  }
+
+  // ===== 目录概览：用当前列表现成的数据填满右侧栏 =====
+  var OVERVIEW_TYPE_LABELS = {
+    image: "图片", film: "视频", music: "音频", "file-text": "文档",
+    archive: "压缩包", "file-code": "代码", "file-spreadsheet": "表格",
+    smartphone: "应用", package: "安装包"
+  };
+
+  function overviewRow(label, value) {
+    const row = document.createElement("div");
+    row.className = "overview-item";
+    const l = document.createElement("span");
+    l.className = "overview-label";
+    l.textContent = label;
+    const v = document.createElement("span");
+    v.className = "overview-value";
+    v.textContent = value;
+    v.title = value;
+    row.appendChild(l);
+    row.appendChild(v);
+    return row;
+  }
+
+  function renderReadmeOverview(files) {
+    const aside = document.getElementById("readme-overview");
+    if (!aside) return;
+    aside.replaceChildren();
+
+    const list = files || [];
+    // 空目录没有可统计的内容，留空让 CSS 收起这一列
+    if (!list.length) return;
+
+    let dirs = 0;
+    let fileCount = 0;
+    let totalSize = 0;
+    let latest = 0;
+    const byType = {};
+
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      if (Number(f.isdir) === 1) {
+        dirs++;
+        continue;
+      }
+      fileCount++;
+      totalSize += Number(f.size) || 0;
+      const t = Number(f.server_mtime || f.server_ctime || f.mtime) || 0;
+      if (t > latest) latest = t;
+
+      const name = f.server_filename || f.filename || "";
+      const cat = typeof fileIconMeta === "function" ? fileIconMeta(name, false).category : "file";
+      byType[cat] = (byType[cat] || 0) + 1;
+    }
+
+    const heading = document.createElement("h3");
+    heading.textContent = "目录概览";
+    aside.appendChild(heading);
+
+    aside.appendChild(overviewRow("文件夹", String(dirs)));
+    aside.appendChild(overviewRow("文件", String(fileCount)));
+    aside.appendChild(overviewRow(
+      "总大小",
+      typeof formatSize === "function" ? formatSize(totalSize) : String(totalSize)
+    ));
+    aside.appendChild(overviewRow(
+      "最近修改",
+      latest > 0 && typeof formatTime === "function" ? formatTime(latest) : "-"
+    ));
+
+    // 类型分布：只列真实存在的类别，按数量降序。
+    // 只有一种类别时说明不了任何问题，索性不渲染，避免一个孤行占着一个小标题。
+    const entries = Object.keys(byType)
+      .map(function (cat) {
+        return { cat: cat, count: byType[cat] };
+      })
+      .sort(function (a, b) {
+        return b.count - a.count;
+      });
+
+    if (entries.length >= 2) {
+      const sub = document.createElement("h3");
+      sub.className = "overview-sub";
+      sub.textContent = "文件类型";
+      aside.appendChild(sub);
+      for (let j = 0; j < entries.length; j++) {
+        aside.appendChild(overviewRow(
+          OVERVIEW_TYPE_LABELS[entries[j].cat] || "其他",
+          String(entries[j].count)
+        ));
+      }
+    }
   }
 
   // 挂载至全局
