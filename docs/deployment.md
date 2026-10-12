@@ -45,12 +45,13 @@ curl -sS http://127.0.0.1:4172/healthz
 
 默认映射：`127.0.0.1:4172 -> 容器 4172`。
 
-镜像特点：
+镜像说明：
 
-- 多阶段构建，Alpine 运行时
-- 非 root（`appuser`）
-- `read_only` + `cap_drop: ALL` + `no-new-privileges`
-- 密钥通过卷挂载或环境变量注入，**不打进镜像**
+- 基于 Alpine 3.24 极简环境，最终镜像体积约 20MB
+- 使用 Docker BuildKit 原生交叉编译，构建速度快且不依赖 QEMU 模拟
+- 默认使用非 root 用户（`appuser`，UID 10001）运行
+- 支持 `read_only` 只读文件系统与 `cap_drop: ALL` 权限剥离
+- 密钥与配置通过文件挂载或环境变量传入，**不打包进镜像**
 
 ### 使用环境变量
 
@@ -104,7 +105,7 @@ git pull
 docker compose up -d --build
 ```
 
-修改 `static/` 后需重新 build（资源已 embed）。
+修改 `web/static/` 下的资源后需重新 build（前端文件已通过 `go:embed` 编译进二进制）。
 
 ## Nginx 反代示例
 

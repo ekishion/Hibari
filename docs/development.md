@@ -2,6 +2,12 @@
 
 本项目采用标准 Go 项目工程布局（Standard Go Project Layout），遵循清晰的模块边界与分层架构。
 
+## 环境要求
+
+- **Go 版本**：建议 Go 1.26.0 或更高版本
+- **无需 CGO**：全项目使用纯 Go 开发，SQLite 驱动采用 `modernc.org/sqlite`，直接跨平台编译即可，无需系统 C 依赖
+- **无前端构建依赖**：前端直接写原生 HTML / CSS / JS，无需 npm 编译，构建时通过 `go:embed` 直接内嵌
+
 ## 项目结构
 
 ```text
