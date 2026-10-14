@@ -260,3 +260,38 @@ func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {
 	// 无 Content-Length 的上游靠限读兜底；超限截断的图片无法渲染，属可接受的降级。
 	_, _ = io.Copy(w, io.LimitReader(upstream.Body, int64(maxPreviewBytes)-int64(n)))
 }
+
+// handleStream 无状态直链中转：校验路径后 302 到百度直链。
+// 不创建短链、不写持久化状态、不出现在分享管理列表，
+// 因此在线预览与直接下载都不会产生对外可分享的链接。
+// 携带 X-Stream-Probe 请求头时仅做校验并返回 JSON，
+// 供前端在赋值媒体 src 或触发下载前获得可读错误（与图片/文本预览的错误体验一致）。
+func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("path")
+	if !config.IsValidBaiduPath(filePath) {
+		writeJSONError(w, http.StatusBadRequest, "invalid_path", "文件路径无效")
+		return
+	}
+	if !s.pathAllowed(filePath) {
+		writeJSONError(w, http.StatusForbidden, "path_not_allowed", "该文件不在共享范围内")
+		return
+	}
+	meta, err := s.baiduClient.EnsureFileMeta(filePath)
+	if err != nil || meta.IsDir == 1 {
+		writeJSONError(w, http.StatusNotFound, "file_not_found", "文件不存在或已被移动")
+		return
+	}
+	if r.Header.Get("X-Stream-Probe") != "" {
+		// 探测请求：只校验，不解析直链。审计也记在这一步——每个用户动作恰好一次，
+		// 避免播放中拖动进度条产生的分段 Range 请求刷满审计日志。
+		s.audit(r, "stream_accessed", filePath)
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+		return
+	}
+	dlink, err := s.baiduClient.GetBaiduDLink(filePath, r.Header.Get("User-Agent"))
+	if err != nil || !baidu.IsAllowedBaiduDownloadURL(dlink) {
+		writeJSONError(w, http.StatusBadGateway, "stream_link_failed", "无法获取下载直链，请稍后重试")
+		return
+	}
+	http.Redirect(w, r, dlink, http.StatusFound)
+}

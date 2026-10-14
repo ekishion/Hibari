@@ -236,6 +236,92 @@ func TestHandleShortDownload_RedirectToLandingPage(t *testing.T) {
 	}
 }
 
+// TestHandleStream_ProbeMintsNoShareLink 核心回归：预览/下载走无状态中转，
+// 不得铸造任何对外分享链接（既不进 shortLinks，也不进 dirLinks）。
+func TestHandleStream_ProbeMintsNoShareLink(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none"}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+
+	// 预置文件元数据缓存，避免探测请求打到百度
+	sampleDir := []byte(`{"errno":0,"list":[{"fs_id":401,"path":"/media/clip.mp4","server_filename":"clip.mp4","size":2048,"isdir":0}]}`)
+	s.cache.Update(sampleDir)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/stream?path=%2Fmedia%2Fclip.mp4", nil)
+	req.Header.Set("X-Stream-Probe", "1")
+	rec := httptest.NewRecorder()
+	s.handleStream(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		OK bool `json:"ok"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || !resp.OK {
+		t.Fatalf("unexpected probe response: %s", rec.Body.String())
+	}
+	if links := s.shortLinks.List(); len(links) != 0 {
+		t.Fatalf("expected no shortlinks minted, got %d: %+v", len(links), links)
+	}
+	if links := s.dirLinks.List(); len(links) != 0 {
+		t.Fatalf("expected no dirlinks minted, got %d", len(links))
+	}
+}
+
+func TestHandleStream_RejectsInvalidRequests(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none", AllowedPaths: []string{"/shared"}}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+
+	// 预置目录项，用于验证目录被拒绝（isdir=1 走缓存，不打百度）
+	dirSample := []byte(`{"errno":0,"list":[{"fs_id":501,"path":"/shared/movies","server_filename":"movies","isdir":1}]}`)
+	s.cache.Update(dirSample)
+
+	cases := []struct {
+		name     string
+		target   string
+		wantCode int
+	}{
+		{"非法路径", "/api/stream?path=..%2Fetc%2Fpasswd", http.StatusBadRequest},
+		{"越权路径", "/api/stream?path=%2Fother%2Fsecret.mp4", http.StatusForbidden},
+		{"目录非文件", "/api/stream?path=%2Fshared%2Fmovies", http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest(http.MethodGet, tc.target, nil)
+		req.Header.Set("X-Stream-Probe", "1")
+		rec := httptest.NewRecorder()
+		s.handleStream(rec, req)
+		if rec.Code != tc.wantCode {
+			t.Fatalf("%s: expected %d, got %d: %s", tc.name, tc.wantCode, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestHandleStream_AuthAndMethodGuards(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none", AccessToken: "top-secret-token"}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+	handler := s.Handler()
+
+	// 未携带会话：401（与其它预览接口同等鉴权）
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stream?path=/a.mp4", nil))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without session, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 仅允许 GET/HEAD：POST 返回 405（方法校验先于鉴权）
+	rec2 := httptest.NewRecorder()
+	handler.ServeHTTP(rec2, httptest.NewRequest(http.MethodPost, "/api/stream?path=/a.mp4", nil))
+	if rec2.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405 for POST, got %d", rec2.Code)
+	}
+}
+
 func TestHandleSharesListAndRevoke(t *testing.T) {
 	cfg := &config.Config{StateBackend: "none"}
 	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}

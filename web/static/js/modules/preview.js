@@ -1,5 +1,5 @@
 // 即刻轻盘预览模块：图片 / 文本 / 音视频灯箱。
-// 依赖 app.js 的全局：apiFetch、parseAPIError、showToast、requestShortLink、
+// 依赖 app.js 的全局：apiFetch、parseAPIError、showToast、
 // isPreviewableImage、currentFiles、trapFocusWithin，以及 markdown.js 的 renderMarkdown。
 
 // 与后端 handlers.go 的 textPreviewExts 白名单保持同步
@@ -200,10 +200,26 @@ function loadTextPreview(filePath, fileName, seq) {
 }
 
 function loadMediaPreview(kind, filePath, seq) {
-  // 媒体走 /d/{token} 短链：302 到百度直链，浏览器自动透传 Range，
+  // 媒体经无状态中转接口 302 到百度直链：浏览器自动透传 Range，
   // 不经 VPS 中转流量（CSP media-src 已放行百度直链域）。
-  requestShortLink(filePath)
-    .then(function (url) {
+  // 先探测拿可读错误再赋值 src；全程不创建任何对外链接。
+  const streamUrl = "/api/stream?path=" + encodeURIComponent(filePath);
+  apiFetch(streamUrl, { headers: { "X-Stream-Probe": "1" } })
+    .then(function (resp) {
+      if (resp.status === 401) {
+        // 会话失效：走统一的重新验证流程，与图片/文本预览一致
+        return resp.text().then(function (text) {
+          closeLightbox();
+          requireLogin(parseAPIError(resp, text));
+          throw new Error("unauthorized");
+        });
+      }
+      if (!resp.ok) {
+        return resp.text().then(function (text) { throw new Error(parseAPIError(resp, text)); });
+      }
+      return resp.json();
+    })
+    .then(function () {
       if (seq !== previewState.seq) return;
       const isVideo = kind === "video";
       const video = document.getElementById("lightbox-video");
@@ -228,7 +244,7 @@ function loadMediaPreview(kind, filePath, seq) {
       el.hidden = false;
       el.muted = false;
       syncMuteIcon(el);
-      el.src = url;
+      el.src = streamUrl;
       updateMediaUI();
       updateMediaPlayState();
       if (isVideo) {

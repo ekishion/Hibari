@@ -354,13 +354,22 @@
     return item;
   }
 
-  // 直接下载单个文件
+  // 直接下载单个文件：经无状态中转接口 302 到百度直链，不创建分享短链
   function downloadFileDirect(filePath, fileName, btn) {
     if (typeof setButtonLoading === "function") setButtonLoading(btn, true, "");
-    requestShortLink(filePath)
-      .then(function (url) {
+    const streamUrl = "/api/stream?path=" + encodeURIComponent(filePath);
+    apiFetch(streamUrl, { headers: { "X-Stream-Probe": "1" } })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.text().then(function (text) {
+            throw new Error(parseAPIError(resp, text));
+          });
+        }
+        return resp.json();
+      })
+      .then(function () {
         if (typeof setButtonLoading === "function") setButtonLoading(btn, false);
-        triggerDownloadNavigation(url);
+        triggerDownloadNavigation(streamUrl);
       })
       .catch(function (err) {
         if (typeof setButtonLoading === "function") setButtonLoading(btn, false);

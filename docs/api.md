@@ -194,12 +194,20 @@ X-CSRF-Token: <csrf_token>
 
 - 常见错误：`text_not_allowed`、`text_not_text`、`text_link_failed`、`text_fetch_failed`
 
-### 音视频播放
+### 音视频播放与直接下载
 
-`<video>` / `<audio>` 直接复用下载短链：前端先 `POST /api/download` 拿到 `/d/{token}`，再把短链作为媒体 `src`。服务端 302 到百度直链，浏览器自动透传 `Range` 头，支持拖动进度条。
+`<video>` / `<audio>` 预览与文件行的“下载”按钮（含双击下载）共用同一个无状态中转接口。前端先带 `X-Stream-Probe` 头探测一次以获得可读错误（不解析直链），通过后再把该 URL 作为媒体 `src` 或触发浏览器下载：
 
+```http
+GET /api/stream?path=%2F%E7%A4%BA%E4%BE%8B%E7%9B%AE%E5%BD%95%2Fclip.mp4
+X-Stream-Probe: 1
+```
+
+- 服务端校验路径与共享范围后 `302` 到百度直链，浏览器自动透传 `Range` 头，支持拖动进度条
 - 媒体流量**不经过 VPS 中转**（浏览器直连百度直链；CSP `media-src` 已放行相应域名）
-- 注意：若配置了 `short_link_max_uses`，拖动进度条产生的多次请求可能重复消耗短链使用次数；需要媒体播放时建议保持默认（不限次数）
+- **不创建任何短链**：不写入短链表、不落持久化状态、不出现在“分享管理”列表。在线预览与直接下载都不会产生对外可分享的链接，只有分享弹窗显式创建分享才会铸造 `/d/{token}`
+- 需要登录（与图片/文本预览一致）；携带 `X-Stream-Probe` 的探测请求会记录 `stream_accessed` 审计事件（每个用户动作恰好一条，避免播放中拖动进度条的分段请求刷满日志）
+- 常见错误：`invalid_path`、`path_not_allowed`、`file_not_found`、`stream_link_failed`
 
 ## 健康检查
 
@@ -219,4 +227,4 @@ X-CSRF-Token: <csrf_token>
 }
 ```
 
-常见 code：`unauthorized`、`csrf_invalid`、`invalid_path`、`path_not_allowed`、`rate_limited`、`baidu_list_failed`、`dlink_failed`、`shortlink_not_found`、`dirlink_not_found`、`readme_not_found`、`readme_link_failed`、`readme_too_large`、`readme_not_text`、`preview_not_image`、`preview_too_large`、`text_not_allowed`、`text_not_text`、`text_link_failed`、`text_fetch_failed` 等。
+常见 code：`unauthorized`、`csrf_invalid`、`invalid_path`、`path_not_allowed`、`rate_limited`、`baidu_list_failed`、`dlink_failed`、`shortlink_not_found`、`dirlink_not_found`、`readme_not_found`、`readme_link_failed`、`readme_too_large`、`readme_not_text`、`preview_not_image`、`preview_too_large`、`text_not_allowed`、`text_not_text`、`text_link_failed`、`text_fetch_failed`、`stream_link_failed` 等。

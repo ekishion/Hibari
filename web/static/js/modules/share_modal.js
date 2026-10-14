@@ -200,7 +200,9 @@
         root.QRCode.renderTo(qrContainer, fullUrl, {
           size: 144,
           margin: 1,
-          fgColor: "currentColor",
+          // 二维码模块固定深色：容器底色是写死的白色，跟随主题的
+          // currentColor 会在暗色模式下变成白模块白底而无法扫描
+          fgColor: "#000000",
           bgColor: "transparent"
         });
       }
@@ -310,41 +312,6 @@
         closeUnlockModal();
       });
     }
-  }
-
-  // ===== 快捷短链获取 =====
-  function requestShortLink(filePath) {
-    return apiFetch("/api/download", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: filePath })
-    })
-      .then(function (resp) {
-        if (!resp.ok) {
-          return resp.text().then(function (text) {
-            throw new Error(parseAPIError(resp, text));
-          });
-        }
-        return resp.json();
-      })
-      .then(function (data) {
-        const url = (data.urls && data.urls[0] && data.urls[0].url) || data.url || ("/d/" + data.token);
-        return url;
-      });
-  }
-
-  function copyLink(filePath) {
-    requestShortLink(filePath)
-      .then(function (url) {
-        const fullUrl = window.location.origin + url;
-        return copyText(fullUrl);
-      })
-      .then(function () {
-        showToast("下载链接已复制到剪贴板", "success");
-      })
-      .catch(function (err) {
-        showToast("获取链接失败：" + err.message, "error");
-      });
   }
 
   // ===== 绑定分享弹窗整体事件 =====
@@ -801,7 +768,5 @@
   root.openSharesManageModal = openSharesManageModal;
   root.closeSharesManageModal = closeSharesManageModal;
   root.bindSharesManageModal = bindSharesManageModal;
-  root.requestShortLink = requestShortLink;
-  root.copyLink = copyLink;
 
 })(typeof window !== "undefined" ? window : globalThis);

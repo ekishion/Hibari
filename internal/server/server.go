@@ -194,6 +194,12 @@ func (s *Server) routes() {
 		rateLimit:   true,
 		methods:     []string{http.MethodPost},
 	}))
+	s.mux.HandleFunc("/api/stream", s.withSecurity(s.handleStream, securityOpts{
+		requireAuth: true,
+		csrf:        false, // 只读中转：GET 无状态变更，无需 CSRF
+		rateLimit:   true,
+		methods:     []string{http.MethodGet, http.MethodHead},
+	}))
 	s.mux.HandleFunc("/healthz", s.withSecurity(s.handleHealthz, securityOpts{
 		requireAuth: false,
 		csrf:        false,
