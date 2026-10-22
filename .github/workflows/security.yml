@@ -1,0 +1,33 @@
+name: Security Scan
+
+# Dependabot 只更新模块依赖，不会为标准库 CVE 主动升级 go.mod 里的工具链，
+# 这里用 govulncheck 每周对漏洞库扫描一次，工具链落后时工作流会失败提醒。
+on:
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: 安装 govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: 扫描
+        run: |
+          set -o pipefail
+          "$(go env GOPATH)/bin/govulncheck" ./... | tee govulncheck.txt
+      - name: 上传扫描结果
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: govulncheck-report
+          path: govulncheck.txt
