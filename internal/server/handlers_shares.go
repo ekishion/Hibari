@@ -84,20 +84,20 @@ func (s *Server) handleShareInfo(w http.ResponseWriter, r *http.Request) {
 	password := strings.TrimSpace(request.Password)
 	passwordRequired := meta.HasPassword
 
-		// 如果需要提取码，但未输入或密码错误
-		if passwordRequired {
-			if password == "" {
-				// 未验证提取码前不暴露文件名
-				writeJSON(w, http.StatusOK, map[string]any{
-					"token":          token,
-					"has_password":   true,
-					"password_valid": false,
-					"expires_at":     meta.ExpiresAt.Unix(),
-					"max_uses":       meta.MaxUses,
-					"uses":           meta.Uses,
-				})
-				return
-			}
+	// 如果需要提取码，但未输入或密码错误
+	if passwordRequired {
+		if password == "" {
+			// 未验证提取码前不暴露文件名
+			writeJSON(w, http.StatusOK, map[string]any{
+				"token":          token,
+				"has_password":   true,
+				"password_valid": false,
+				"expires_at":     meta.ExpiresAt.Unix(),
+				"max_uses":       meta.MaxUses,
+				"uses":           meta.Uses,
+			})
+			return
+		}
 		// 校验密码（不消耗使用次数）
 		filePath, verified, pwdReq := s.shortLinks.ResolveWithPassword(token, password, false)
 		if pwdReq || !verified {
