@@ -47,6 +47,11 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 	if token != "" {
 		resolved, ok, passwordRequired := s.dirLinks.ResolveWithPassword(token, password)
 		if passwordRequired {
+			// 带了密码仍要求提取码 ⇒ 密码不对，前端弹窗要显示可读错误
+			if password != "" {
+				writeJSONError(w, http.StatusUnauthorized, "share_password_incorrect", "提取码错误，请重新输入")
+				return
+			}
 			writeJSONError(w, http.StatusUnauthorized, "share_password_required", "该分享目录受访问码保护，请输入提取码")
 			return
 		}
@@ -60,8 +65,10 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		if dir == "" || cleanDir == "/" || cleanDir == "." || cleanDir == sandboxRoot {
 			dir = sandboxRoot
 		} else {
-			// 强制沙盒圈定：客户端请求的 dir 必须严格在 sandboxRoot 子树之下
-			if !strings.HasPrefix(cleanDir, sandboxRoot+"/") {
+			// 强制沙盒圈定：客户端请求的 dir 必须严格在 sandboxRoot 子树之下。
+			// 根目录短链的 sandboxRoot 为 "/"，前缀须归一为 "/" 而非 "//"
+			prefix := strings.TrimSuffix(sandboxRoot, "/") + "/"
+			if !strings.HasPrefix(cleanDir, prefix) {
 				log.Printf("[SECURITY] 拦截目录短链越权逃逸: 授权根目录 %q, 试图访问 %q", sandboxRoot, cleanDir)
 				writeJSONError(w, http.StatusForbidden, "path_not_allowed", "越界访问被拒绝：超出共享目录范围")
 				return
