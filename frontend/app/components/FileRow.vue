@@ -3,7 +3,8 @@
 import { fileNameOf, fileTimeOf, type BaiduFile } from '~/composables/useFiles'
 
 const props = defineProps<{
-  file: BaiduFile
+  // 返回上一级行不携带 file（以 parentPath 区分），仅在非父行时存在
+  file?: BaiduFile
   currentDir: string
   parentPath?: string | null
 }>()
@@ -13,7 +14,7 @@ const { openPreview } = usePreview()
 const { openShare } = useShareModals()
 const { showToast } = useToast()
 
-const isDir = computed(() => Number(props.file.isdir) === 1)
+const isDir = computed(() => Number(props.file?.isdir) === 1)
 const name = computed(() => (props.parentPath ? "返回上级" : fileNameOf(props.file)))
 const metaText = computed(() => {
   if (props.parentPath) return "返回上一层目录"
