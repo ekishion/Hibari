@@ -1,0 +1,19 @@
+{
+  "name": "jikeqingpan-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt generate",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "^4.2.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

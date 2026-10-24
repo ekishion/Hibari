@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -58,6 +59,32 @@ func (s *Server) requestClientIP(r *http.Request) string {
 		}
 	}
 	return remote
+}
+
+// newCSPNonce 生成 CSP 内联脚本 nonce（每次服务启动一个，index 为启动渲染缓存）。
+func newCSPNonce() string {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(buf)
+}
+
+// scriptOpenTagRe 匹配任意 <script> 开标签（RE2 不支持预查，src 过滤在回调里做）。
+var scriptOpenTagRe = regexp.MustCompile(`<script[^>]*>`)
+
+// injectScriptNonce 给 HTML 中的内联 script（无 src 属性）注入 CSP nonce。
+func injectScriptNonce(html []byte, nonce string) []byte {
+	if nonce == "" {
+		return html
+	}
+	return scriptOpenTagRe.ReplaceAllFunc(html, func(tag []byte) []byte {
+		text := string(tag)
+		if strings.Contains(text, " src=") || strings.Contains(text, "nonce=") {
+			return tag
+		}
+		return []byte(`<script nonce="` + nonce + `"` + strings.TrimPrefix(text, "<script"))
+	})
 }
 
 func newCSRFToken() (string, error) {

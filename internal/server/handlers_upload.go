@@ -49,10 +49,6 @@ func (s *Server) handleQuota(w http.ResponseWriter, r *http.Request) {
 // precreate → 逐片 superfile2 → create，结束立即删除临时文件。
 // 表单字段约定按序：dir（目标目录）→ size（文件字节数）→ file（文件内容）。
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
-	if !s.cfg.UploadEnabled {
-		writeJSONError(w, http.StatusForbidden, "upload_disabled", "上传功能未开启")
-		return
-	}
 	limit := s.cfg.UploadMaxBytes()
 	maxBytes := limit + multipartFormOverheadBytes
 	if limit == 0 {

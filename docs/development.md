@@ -107,13 +107,22 @@ cmd/jikeqingpan
 ### 首页模板预渲染
 
 `index.html` 只是外壳，通过 `{{template "xxx" .}}` 按序注入 `partials/` 下的组件。
-`internal/server/template.go` 在服务启动时用 `html/template` 把外壳与全部 partial
-一次性解析并渲染成内存字节切片；`GET /` 直接输出这个整包，不产生额外网络请求，
-也不会出现客户端拼装导致的白屏闪烁。
+前端为独立项目 `frontend/`（Nuxt 4 + pnpm，SPA 模式），构建产物输出到 `web/dist/`
+并由 `go:embed` 打进单二进制；`internal/server/template.go` 在服务启动时把 index.html
+一次性渲染成内存字节切片，`GET /` 直接输出，不产生额外网络请求。
 
-## 本地开发调试
+## 前端开发（frontend/）
 
-### 1. 启动服务
+```bash
+cd frontend
+pnpm install
+pnpm dev        # 开发服务器：/api、/d 自动代理到本地后端 127.0.0.1:4172
+pnpm build      # 构建产物输出到 ../web/dist
+```
+
+先在仓库根启动后端再跑 `pnpm dev`，浏览器访问 Nuxt 给出的开发地址即可热更新。
+
+## 本地后端调试
 
 ```bash
 cp config.example.json config.json
@@ -128,7 +137,7 @@ Windows PowerShell：
 go run ./cmd/jikeqingpan -config config.json
 ```
 
-修改 `web/static/` 下的前端资源后，重新运行 `go run` 即可自动重新嵌入生效。
+后端启动时嵌入 `web/dist`；改动前端后需要 `pnpm build` 并重启 go 进程。
 
 ## 自动化测试与检查
 
@@ -139,20 +148,11 @@ gofmt -l .
 # 静态代码分析
 go vet ./...
 
-# 前端 JS 语法校验
-for f in web/static/*.js; do node --check "$f"; done
-
-# 编译验证
-go build -trimpath -ldflags="-s -w" -o cmd/bin/main ./cmd/jikeqingpan
+# 编译验证（需先构建前端产物）
+bash build.sh
 
 # 运行单元测试
 go test ./...
-```
-
-或直接执行自动化脚本：
-
-```bash
-bash build.sh
 ```
 
 ## 常用开发环境变量

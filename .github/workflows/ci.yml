@@ -14,9 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: 前端构建（frontend → web/dist）
+        run: |
+          cd frontend
+          pnpm install --frozen-lockfile
+          pnpm build
       - name: gofmt 检查
         run: |
           out=$(gofmt -l .)
@@ -29,13 +42,6 @@ jobs:
         run: go vet ./...
       - name: 单元测试
         run: go test -v ./...
-      - name: 前端 JS 语法检查
-        run: |
-          find web/static/js -name '*.js' -print0 | while IFS= read -r -d '' f; do
-            node --check "$f"
-          done
-      - name: CSS 结构检查
-        run: node scripts/check-css.mjs
 
   build:
     name: build ${{ matrix.goos }}/${{ matrix.goarch }}
@@ -50,10 +56,23 @@ jobs:
             goarch: arm64
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: 编译
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: 前端构建（frontend → web/dist）
+        run: |
+          cd frontend
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: 编译（需前端产物）
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}

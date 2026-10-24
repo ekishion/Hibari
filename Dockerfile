@@ -1,5 +1,14 @@
 # syntax=docker/dockerfile:1
 
+# 阶段一：构建前端（frontend → /web/dist，见 frontend/nuxt.config.ts 的输出配置）
+FROM node:22-alpine AS frontend
+WORKDIR /fe
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile
+COPY frontend/ .
+RUN pnpm build
+
+# 阶段二：编译后端（嵌入 web/dist 的前端产物）
 # 使用 --platform=$BUILDPLATFORM 让编译阶段始终运行在宿主机原生 CPU 架构上（极速构建，避免 QEMU 软仿真开销）
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 WORKDIR /src
@@ -11,7 +20,9 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-COPY web/ ./web/
+COPY web/embed.go ./web/embed.go
+# 前端构建产物嵌入二进制
+COPY --from=frontend /web/dist ./web/dist/
 
 # BuildKit 自动注入目标系统的 OS 和架构（如 linux/amd64 或 linux/arm64）
 # 纯 Go（CGO_ENABLED=0）原生支持极速交叉编译

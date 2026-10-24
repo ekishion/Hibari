@@ -53,25 +53,18 @@ func newUploadMultipart(t *testing.T, dir, size, fileName, content string) (*byt
 }
 
 func TestHandleUpload_Disabled(t *testing.T) {
+	// 上传关闭时路由不注册：请求直接 404（而非 handler 内 403），代码路径不可达
 	s := newUploadServer(t, func(c *config.Config) { c.UploadEnabled = false })
 	body, contentType := newUploadMultipart(t, "/", "5", "a.txt", "hello")
 	req := httptest.NewRequest(http.MethodPost, "/api/upload", body)
 	req.Header.Set("Content-Type", contentType)
 	rec := httptest.NewRecorder()
 
-	s.handleUpload(rec, req)
+	s.Handler().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d: %s", rec.Code, rec.Body.String())
-	}
-	var resp struct {
-		Error struct {
-			Code string `json:"code"`
-		} `json:"error"`
-	}
-	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
-	if resp.Error.Code != "upload_disabled" {
-		t.Fatalf("unexpected error code: %q", resp.Error.Code)
+	// POST 落到静态兜底路由（仅 GET/HEAD）返回 405，证明上传路由未注册、代码路径不可达
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405 for POST with static fallback, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 
