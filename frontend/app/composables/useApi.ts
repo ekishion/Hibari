@@ -15,7 +15,8 @@ export function getCookie(name: string): string {
 
 export async function refreshCsrfCookie(): Promise<void> {
   try {
-    await fetch("/healthz", { credentials: "same-origin" })
+    // 必须走会种 CSRF cookie 的路由；/healthz 在中间件中显式跳过下发
+    await fetch("/api/auth/status", { credentials: "same-origin" })
   } catch {
     // 忽略：后续请求会再次失败并给出可读错误
   }

@@ -33,13 +33,13 @@ export default defineNuxtConfig({
     output: {
       publicDir: fileURLToPath(new URL('../web/dist', import.meta.url)),
     },
-  },
-
-  // 开发模式：把 API 与下载短链代理到本地后端（go run ./cmd/jikeqingpan）
-  devProxy: {
-    '/api': { target: 'http://127.0.0.1:4172', changeOrigin: false },
-    '/d': { target: 'http://127.0.0.1:4172', changeOrigin: false },
-    '/healthz': { target: 'http://127.0.0.1:4172', changeOrigin: false },
+    // 开发模式：把 API 与下载短链代理到本地后端（go run ./cmd/jikeqingpan）。
+    // devProxy 只在 nitro 配置块内生效，放根级会被静默忽略。
+    devProxy: {
+      '/api': { target: 'http://127.0.0.1:4172', changeOrigin: false },
+      '/d': { target: 'http://127.0.0.1:4172', changeOrigin: false },
+      '/healthz': { target: 'http://127.0.0.1:4172', changeOrigin: false },
+    },
   },
 
   compatibilityDate: '2026-10-24',

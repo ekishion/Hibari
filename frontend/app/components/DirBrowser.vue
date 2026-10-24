@@ -80,12 +80,18 @@ onMounted(async () => {
       if (pwd) currentDirPassword.value = pwd
       await loadFiles("")
     } else {
-      const ok = await checkAuth()
-      if (ok) await loadFiles((route.query.dir as string) || "/")
+      // 已持有会话时 checkAuth 会置位 authenticated，加载统一交给下方 watch，避免双重请求
+      await checkAuth()
     }
   } catch (err) {
     requireLogin((err as Error).message || "无法确认登录状态，请刷新页面重试")
   }
+})
+
+// 登录成功（或启动时已持有会话）后加载文件列表；保留 ?dir= 深链，重新登录则停留在当前目录
+watch(authenticated, (now) => {
+  if (!now || props.dirToken) return
+  loadFiles(currentDirRef.value || (route.query.dir as string) || "/")
 })
 </script>
 

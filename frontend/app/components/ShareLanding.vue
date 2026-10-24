@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// 单文件分享落地页：等价迁移自 share_page.js（提取码验证/失效卡片/直接下载/在线预览）
+// 单文件分享落地页：等价迁移自 share_page.js（提取码验证/失效卡片/直接下载）
+// 旧版的"在线预览"按钮依赖管理员鉴权的预览端点，对访客始终 401，迁移时移除。
 
 interface ShareInfo {
   token: string
-  file_path?: string
   file_name: string
   has_password?: boolean
   password_valid?: boolean
@@ -18,7 +18,6 @@ const props = defineProps<{ token: string }>()
 
 const route = useRoute()
 const { showToast } = useToast()
-const { openPreview } = usePreview()
 
 type CardState =
   | { kind: "loading" }
@@ -179,15 +178,6 @@ function startDownload(downloadUrl?: string) {
           <button type="button" class="btn btn-primary btn-block btn-lg" @click="startDownload(card.info.download_url)">
             <span class="btn-icon"><AppIcon name="download" :size="16" /></span>
             <span class="btn-label">立即下载</span>
-          </button>
-          <button
-            v-if="card.info.file_name && previewKind(card.info.file_name)"
-            type="button"
-            class="btn btn-secondary btn-block"
-            @click="openPreview(card.info.file_path || '', card.info.file_name)"
-          >
-            <span class="btn-icon"><AppIcon name="eye" :size="16" /></span>
-            <span class="btn-label">在线预览</span>
           </button>
           <NuxtLink to="/" class="btn btn-ghost btn-block">进入网盘首页</NuxtLink>
         </div>
