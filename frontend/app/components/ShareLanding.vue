@@ -133,9 +133,6 @@ function startDownload(downloadUrl?: string) {
         <div class="landing-squircle-badge is-warning"><AppIcon name="link-2-off" :size="22" /></div>
         <h1 class="landing-title">{{ card.title }}</h1>
         <p class="landing-desc">{{ card.message }}</p>
-        <div class="landing-actions">
-          <NuxtLink to="/" class="btn btn-primary btn-block">返回网盘首页</NuxtLink>
-        </div>
       </div>
 
       <div v-else-if="card.kind === 'password'" class="share-landing-card">
@@ -179,7 +176,6 @@ function startDownload(downloadUrl?: string) {
             <span class="btn-icon"><AppIcon name="download" :size="16" /></span>
             <span class="btn-label">立即下载</span>
           </button>
-          <NuxtLink to="/" class="btn btn-ghost btn-block">进入网盘首页</NuxtLink>
         </div>
       </div>
     </div>
