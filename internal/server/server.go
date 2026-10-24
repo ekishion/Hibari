@@ -66,7 +66,7 @@ func NewServer(cfg *config.Config, staticContent fs.FS, version string) *Server 
 
 	cache := storage.NewFileListCacheWithLimits(storage.MaxCachedFiles, cfg.FileCacheTTL(), cfg.DlinkCacheTTL())
 	httpClient := &http.Client{Timeout: baidu.BaiduClientTimeout}
-	baiduClient := baidu.NewClient(cfg, cache, httpClient, "")
+	baiduClient := baidu.NewClient(cfg, cache, httpClient, cfg.BaiduBaseURL)
 
 	s := &Server{
 		cfg:               cfg,
@@ -199,6 +199,18 @@ func (s *Server) routes() {
 		csrf:        false, // 只读中转：GET 无状态变更，无需 CSRF
 		rateLimit:   true,
 		methods:     []string{http.MethodGet, http.MethodHead},
+	}))
+	s.mux.HandleFunc("/api/quota", s.withSecurity(s.handleQuota, securityOpts{
+		requireAuth: true,
+		csrf:        false, // GET 只读：网盘容量展示
+		rateLimit:   true,
+		methods:     []string{http.MethodGet},
+	}))
+	s.mux.HandleFunc("/api/upload", s.withSecurity(s.handleUpload, securityOpts{
+		requireAuth: true,
+		csrf:        true,
+		rateLimit:   true,
+		methods:     []string{http.MethodPost},
 	}))
 	s.mux.HandleFunc("/healthz", s.withSecurity(s.handleHealthz, securityOpts{
 		requireAuth: false,

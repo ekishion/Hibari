@@ -275,6 +275,13 @@
   gap: 8px;
 }
 
+/* 全局拖拽文件悬停时的高亮（upload.js 拖入时切换） */
+#file-list.is-drop-target {
+  outline: 2px dashed var(--ring);
+  outline-offset: 6px;
+  border-radius: var(--r-md);
+}
+
 /* 空目录 / 搜索无结果的占位提示 */
 .empty-state {
   display: flex;

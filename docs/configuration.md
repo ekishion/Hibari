@@ -52,6 +52,11 @@ openssl rand -hex 24
 | `readme_max_mb` | `README_MAX_MB` | `0` | README/文本预览大小上限（MB，整数）；`0` 表示默认 512 KB |
 | `file_cache_ttl_seconds` | `FILE_CACHE_TTL_SECONDS` | `900` | 文件元数据缓存有效期（秒） |
 | `dlink_cache_ttl_seconds` | `DLINK_CACHE_TTL_SECONDS` | `300` | 下载直链缓存有效期（秒） |
+| `upload_enabled` | `UPLOAD_ENABLED` | `false` | 是否开启上传功能。开启后站点登录用户可向青春版网盘上传文件（消耗站长账号青春版空间的容量），可配合 `allowed_paths` 限定可上传目录 |
+| `upload_max_mb` | `UPLOAD_MAX_MB` | `2048` | 单文件上传上限（MB，整数）；`0` 表示不限，同时是服务端请求体硬限 |
+| `upload_chunk_mb` | `UPLOAD_CHUNK_MB` | `4` | 上传分片大小（MB，整数，0~16）；`0` 表示默认 4 MB（百度网页流标准分片） |
+| `baidu_base_url` | `BAIDU_BASE_URL` | 空 | 仅测试用：替换 `pan.baidu.com` 请求目标，正常部署留空 |
+| `baidu_pcs_base_url` | `BAIDU_PCS_BASE_URL` | 空 | 仅测试用：替换分片上传域名 `d.pcs.baidu.com`，正常部署留空 |
 | — | `CONFIG_PATH` | `config.json` / 容器内 `/data/config.json` | 配置文件路径 |
 | — | `TZ` | — | 时区（Docker 默认 `Asia/Shanghai`） |
 

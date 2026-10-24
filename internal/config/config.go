@@ -91,6 +91,20 @@ type Config struct {
 	FileCacheTTLSeconds int `json:"file_cache_ttl_seconds"`
 	// DlinkCacheTTLSeconds 下载直链缓存有效期；0 表示默认 5 分钟。
 	DlinkCacheTTLSeconds int `json:"dlink_cache_ttl_seconds"`
+
+	// UploadEnabled 是否允许通过本服务向百度网盘上传文件。默认关闭：
+	// 上传消耗的是站长 cookie 账号的容量与流量，需显式开启；
+	// 可配合 allowed_paths 限定可上传目录。
+	UploadEnabled bool `json:"upload_enabled"`
+	// UploadMaxMB 单文件上传上限（MB，整数）；0 表示不限。
+	UploadMaxMB int `json:"upload_max_mb"`
+	// UploadChunkMB 上传分片大小（MB，整数）；0 表示默认 4 MB，最大 16。
+	UploadChunkMB int `json:"upload_chunk_mb"`
+
+	// BaiduBaseURL / BaiduPCSBaseURL 仅测试用：替换 pan.baidu.com 与
+	// d.pcs.baidu.com 的请求目标，正常部署留空。
+	BaiduBaseURL    string `json:"baidu_base_url"`
+	BaiduPCSBaseURL string `json:"baidu_pcs_base_url"`
 }
 
 func (c *Config) ShowReadmeEnabled() bool {
@@ -176,6 +190,22 @@ func (c *Config) DlinkCacheTTL() time.Duration {
 		return time.Duration(c.DlinkCacheTTLSeconds) * time.Second
 	}
 	return 5 * time.Minute
+}
+
+// UploadMaxBytes 单文件上传上限（由 MB 换算）；0 表示不限。
+func (c *Config) UploadMaxBytes() int64 {
+	if c.UploadMaxMB > 0 {
+		return int64(c.UploadMaxMB) * 1024 * 1024
+	}
+	return 0
+}
+
+// UploadChunkBytes 上传分片大小（由 MB 换算），默认 4 MB（百度网页流标准分片）。
+func (c *Config) UploadChunkBytes() int {
+	if c.UploadChunkMB > 0 {
+		return c.UploadChunkMB * 1024 * 1024
+	}
+	return 4 * 1024 * 1024
 }
 
 // SessionSigningKey 派生会话签名密钥：优先用显式 SessionSecret，
@@ -299,6 +329,21 @@ func applyEnvOverrides(c *Config) {
 	if n, ok := envInt("DLINK_CACHE_TTL_SECONDS"); ok {
 		c.DlinkCacheTTLSeconds = n
 	}
+	if v := strings.TrimSpace(os.Getenv("UPLOAD_ENABLED")); v != "" {
+		c.UploadEnabled = parseBoolEnv(v)
+	}
+	if n, ok := envInt("UPLOAD_MAX_MB"); ok {
+		c.UploadMaxMB = n
+	}
+	if n, ok := envInt("UPLOAD_CHUNK_MB"); ok {
+		c.UploadChunkMB = n
+	}
+	if v := strings.TrimSpace(os.Getenv("BAIDU_BASE_URL")); v != "" {
+		c.BaiduBaseURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("BAIDU_PCS_BASE_URL")); v != "" {
+		c.BaiduPCSBaseURL = v
+	}
 }
 
 func envInt(key string) (int, bool) {
@@ -387,6 +432,12 @@ func (c *Config) normalizeAndValidate() error {
 	}
 	if c.DlinkCacheTTLSeconds < 0 {
 		return fmt.Errorf("dlink_cache_ttl_seconds 不能为负数")
+	}
+	if c.UploadMaxMB < 0 {
+		return fmt.Errorf("upload_max_mb 不能为负数（0 表示不限）")
+	}
+	if c.UploadChunkMB < 0 || c.UploadChunkMB > 16 {
+		return fmt.Errorf("upload_chunk_mb 必须在 0 到 16 之间（0 表示默认 4 MB）")
 	}
 	c.AccessToken = strings.TrimSpace(c.AccessToken)
 	c.SessionSecret = strings.TrimSpace(c.SessionSecret)

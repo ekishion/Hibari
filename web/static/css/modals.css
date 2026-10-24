@@ -698,3 +698,243 @@
   }
 }
 
+
+
+/* ===== 上传弹窗 ===== */
+.upload-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 26px 26px 22px;
+  animation: card-in 0.3s var(--ease-out) both;
+}
+
+.upload-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.upload-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.upload-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: var(--ink-contrast);
+  background: var(--ink);
+}
+.upload-mark .icon { width: 17px; height: 17px; }
+.upload-card-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.upload-target {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  margin-top: 1px;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 剩余容量 */
+.upload-quota {
+  margin-bottom: 14px;
+}
+.upload-quota-text {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+.upload-quota-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.upload-quota-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--success);
+  transition: width 0.4s var(--ease-out);
+}
+.upload-quota-fill.is-warning { background: var(--warning); }
+
+/* 拖拽/选择区 */
+.upload-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 26px 16px;
+  text-align: center;
+  cursor: pointer;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.upload-dropzone:hover,
+.upload-dropzone:focus-visible,
+.upload-dropzone.is-dragover {
+  border-color: var(--ring);
+  background: var(--surface);
+  outline: none;
+}
+.upload-dropzone:focus-visible { box-shadow: 0 0 0 2px var(--ring); }
+.upload-dropzone-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.upload-dropzone-icon .icon { width: 18px; height: 18px; }
+.upload-dropzone-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.upload-dropzone-hint {
+  font-size: 0.74rem;
+  color: var(--text-3);
+}
+
+/* 文件清单 */
+.upload-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: 14px;
+}
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.upload-item.is-done { border-color: var(--success); }
+.upload-item.is-failed { border-color: var(--danger); }
+.upload-item-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+}
+.upload-item-icon .icon { width: 17px; height: 17px; }
+.upload-item-main {
+  flex: 1;
+  min-width: 0;
+}
+.upload-item-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.upload-item-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.upload-item-size {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+.upload-progress {
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+.upload-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  transition: width 0.2s var(--ease-out);
+}
+.upload-progress-fill.is-failed { background: var(--danger); }
+.upload-item-status {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+.upload-item.is-done .upload-item-status { color: var(--success); }
+.upload-item.is-failed .upload-item-status { color: var(--danger); }
+.upload-item-remove {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 0.15s var(--ease-out), background 0.15s var(--ease-out);
+}
+.upload-item-remove:hover { color: var(--danger); background: var(--surface-sunken); }
+.upload-item-remove .icon { width: 15px; height: 15px; }
+
+/* 底部操作区 */
+.upload-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+}
+.upload-actions-hint {
+  font-size: 0.76rem;
+  color: var(--text-2);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.upload-actions .btn { flex-shrink: 0; }
+
+@media (max-width: 520px) {
+  .upload-card { padding: 20px 16px 16px; }
+  .upload-actions { flex-direction: column; align-items: stretch; }
+  .upload-actions .btn { width: 100%; justify-content: center; }
+  .upload-actions-hint { text-align: center; }
+}

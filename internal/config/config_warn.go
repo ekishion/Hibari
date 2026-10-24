@@ -11,10 +11,22 @@ const baiduClientTimeout = 15 * time.Second
 
 // WriteTimeoutFor 按 list_max_pages 推导 WriteTimeout：最坏路径是
 // 逐页翻拉满全部 pages，每页单次百度超时 baiduClientTimeout。
-// 预留 5s 余量（处理+本地写出），下限 30s。
+// 开启上传时按 upload_max_mb 追加分片转发余量（每 100MB +15s，
+// 不限容量按 4GB 估算），并抬高下限到 60s。
+// 预留 5s 余量（处理+本地写出），不开上传时下限 30s。
 func WriteTimeoutFor(cfg *Config) time.Duration {
 	pages := cfg.ListMaxPagesCount()
 	worstCase := time.Duration(pages)*baiduClientTimeout + 5*time.Second
+	if cfg.UploadEnabled {
+		quotaMB := cfg.UploadMaxMB
+		if quotaMB <= 0 {
+			quotaMB = 4096
+		}
+		worstCase += time.Duration(quotaMB/100) * 15 * time.Second
+		if worstCase < 60*time.Second {
+			return 60 * time.Second
+		}
+	}
 	if worstCase < 30*time.Second {
 		return 30 * time.Second
 	}

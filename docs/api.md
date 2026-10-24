@@ -209,6 +209,55 @@ X-Stream-Probe: 1
 - 需要登录（与图片/文本预览一致）；携带 `X-Stream-Probe` 的探测请求会记录 `stream_accessed` 审计事件（每个用户动作恰好一条，避免播放中拖动进度条的分段请求刷满日志）
 - 常见错误：`invalid_path`、`path_not_allowed`、`file_not_found`、`stream_link_failed`
 
+## 上传与容量
+
+上传功能默认关闭，需在配置中设置 `upload_enabled: true`（或环境变量 `UPLOAD_ENABLED`）开启；开启后前端工具栏才会出现“上传”按钮。上传走**百度网盘青春版接口**（`/youth/api/*`），消耗的是青春版独立空间的容量（与主网盘空间不互通），可配合 `allowed_paths` 限定可上传目录。
+
+### 网盘容量
+
+```http
+GET /api/quota
+```
+
+响应示例：
+
+```json
+{ "total": 1099511627776, "used": 322122547200, "free": 777389080576 }
+```
+
+- 字段单位均为字节：`total` 总容量、`used` 已用、`free` 剩余（青春版独立空间）
+- 需要登录；前端在上传弹窗中展示，并在每次上传成功后刷新
+
+### 上传文件
+
+```http
+POST /api/upload
+Content-Type: multipart/form-data; boundary=…
+X-CSRF-Token: <csrf_token>
+```
+
+multipart 表单字段按序：
+
+1. `dir` — 目标目录（明文路径，如 `/示例目录`）
+2. `size` — 文件字节数（前端从 `File.size` 取得）
+3. `file` — 文件内容（每次只接受一个文件）
+
+响应示例：
+
+```json
+{ "ok": true, "path": "/示例目录/文件.zip", "size": 1048576 }
+```
+
+行为说明：
+
+- 服务端完整校验目录与文件名（拒绝路径穿越、控制字符），目标路径同时受 `allowed_paths` 约束
+- 单文件上限 `upload_max_mb`（MB，`0` 表示不限），超出返回 `413 upload_too_large`；该上限同时作为服务端请求体硬限
+- 网页版上传契约要求先提交全部分片 MD5（precreate）再逐片上传（superfile2）后提交（create），因此服务端会把请求体**先落临时文件再转发**，结束后立即删除；内存只保留一个分片缓冲
+- 上传前会做容量预检（`free < size` 直接拒绝）；同名文件已存在返回 `409 file_exists`（可通过预检或百度侧校验触发）
+- 目标目录内容变化后，该目录的本地列表缓存自动失效
+- 审计事件：成功记录 `upload_completed`
+- 常见错误：`upload_disabled`、`upload_too_large`、`size_mismatch`、`invalid_path`、`path_not_allowed`、`dir_not_found`、`file_exists`、`quota_exceeded`、`upload_failed`
+
 ## 健康检查
 
 | 路径 | 鉴权 | 说明 |
@@ -227,4 +276,4 @@ X-Stream-Probe: 1
 }
 ```
 
-常见 code：`unauthorized`、`csrf_invalid`、`invalid_path`、`path_not_allowed`、`rate_limited`、`baidu_list_failed`、`dlink_failed`、`shortlink_not_found`、`dirlink_not_found`、`readme_not_found`、`readme_link_failed`、`readme_too_large`、`readme_not_text`、`preview_not_image`、`preview_too_large`、`text_not_allowed`、`text_not_text`、`text_link_failed`、`text_fetch_failed`、`stream_link_failed` 等。
+常见 code：`unauthorized`、`csrf_invalid`、`invalid_path`、`path_not_allowed`、`rate_limited`、`baidu_list_failed`、`dlink_failed`、`shortlink_not_found`、`dirlink_not_found`、`readme_not_found`、`readme_link_failed`、`readme_too_large`、`readme_not_text`、`preview_not_image`、`preview_too_large`、`text_not_allowed`、`text_not_text`、`text_link_failed`、`text_fetch_failed`、`stream_link_failed`、`upload_disabled`、`upload_too_large`、`size_mismatch`、`dir_not_found`、`file_exists`、`quota_exceeded`、`upload_rejected`、`upload_failed` 等。

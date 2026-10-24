@@ -8,7 +8,13 @@
 
   let authRequired = false;
   let authenticated = false;
-  let uiConfig = { showReadme: true, showReadmeOverview: true, sharePasswordLength: 6 };
+  let uiConfig = {
+    showReadme: true,
+    showReadmeOverview: true,
+    sharePasswordLength: 6,
+    uploadEnabled: false,
+    uploadMaxMB: 2048
+  };
   // 排序状态：以 const 持有并只做原地修改，因为该对象已挂到 root.sortState
   // 供 file_browser 读取；一旦整体重新赋值，外部持有的就是过期引用。
   const sortState = { key: "name", dir: "asc" };
@@ -169,6 +175,7 @@
     const loginBtn = document.getElementById("btn-login-open");
     const shareBtn = document.getElementById("btn-share");
     const sharesManageBtn = document.getElementById("btn-shares-manage");
+    const uploadBtn = document.getElementById("btn-upload");
     if (logoutBtn) {
       logoutBtn.hidden = !(authRequired && authenticated);
     }
@@ -181,6 +188,14 @@
         shareBtn.hidden = true;
       } else {
         shareBtn.hidden = authRequired && !authenticated;
+      }
+    }
+    if (uploadBtn) {
+      // 上传入口额外受 upload_enabled 开关约束，沙盒分享页同样隐藏
+      if (root.sandboxRoot || !uiConfig.uploadEnabled) {
+        uploadBtn.hidden = true;
+      } else {
+        uploadBtn.hidden = authRequired && !authenticated;
       }
     }
     if (sharesManageBtn) {
@@ -218,6 +233,10 @@
         uiConfig.showReadmeOverview = data.show_readme_overview !== false;
         if (typeof data.share_password_length === "number" && data.share_password_length >= 2) {
           uiConfig.sharePasswordLength = data.share_password_length;
+        }
+        uiConfig.uploadEnabled = data.upload_enabled === true;
+        if (typeof data.upload_max_mb === "number" && data.upload_max_mb >= 0) {
+          uiConfig.uploadMaxMB = data.upload_max_mb;
         }
         updateAuthUI();
         if (authRequired && !authenticated) {
@@ -367,6 +386,7 @@
     if (typeof bindShareModal === "function") bindShareModal();
     if (typeof bindSharesManageModal === "function") bindSharesManageModal();
     if (typeof bindUnlockModal === "function") bindUnlockModal();
+    if (typeof bindUploadModal === "function") bindUploadModal();
 
     const sharesManageBtn = document.getElementById("btn-shares-manage");
     if (sharesManageBtn) {
@@ -400,6 +420,18 @@
         if (typeof loadFiles === "function") {
           loadFiles(root.currentDir || "/", { refresh: true });
         }
+      });
+    }
+
+    // 上传当前目录按钮
+    const btnUpload = document.getElementById("btn-upload");
+    if (btnUpload) {
+      btnUpload.addEventListener("click", function () {
+        if (authRequired && !authenticated) {
+          requireLogin("");
+          return;
+        }
+        if (typeof openUploadModal === "function") openUploadModal();
       });
     }
 

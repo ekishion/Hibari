@@ -49,6 +49,14 @@
 /* 提交中：指示器旋转，保持可读的不可用态 */
 .btn.is-loading { cursor: progress; opacity: 0.75; }
 .btn.is-loading .btn-icon .icon { animation: spin 0.85s linear infinite; }
+/* setButtonLoading 生成的加载指示器：独立于 btn-icon 结构，自旋 */
+.btn-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.btn-spinner .icon { width: 16px; height: 16px; animation: spin 0.85s linear infinite; }
 
 
 /* ===== 状态 / 空 / 加载 ===== */
@@ -164,14 +172,19 @@
   font-weight: 500;
   line-height: 1.45;
   box-shadow: var(--shadow-lg);
-  opacity: 0;
-  transform: translateY(12px);
+  /* showToast 直接把 toast 挂在 body 下（不经 #toast-container），因此自带固定定位 */
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  z-index: 3000;
+  transform: translateX(-50%) translateY(12px);
   transition: opacity 0.24s var(--ease-out), transform 0.28s var(--ease-out);
   pointer-events: auto;
   cursor: pointer;
   overflow-wrap: anywhere;
 }
-.toast.show { opacity: 1; transform: none; }
+.toast.show,
+.toast.is-visible { opacity: 1; transform: translateX(-50%); }
 
 .toast-icon {
   display: inline-flex;

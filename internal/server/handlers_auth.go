@@ -18,6 +18,8 @@ func (s *Server) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 		"show_readme":           s.cfg.ShowReadmeEnabled(),
 		"show_readme_overview":  s.cfg.ShowReadmeOverviewEnabled(),
 		"share_password_length": s.cfg.GetSharePasswordLength(),
+		"upload_enabled":        s.cfg.UploadEnabled,
+		"upload_max_mb":         s.cfg.UploadMaxMB,
 	})
 }
 

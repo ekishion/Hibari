@@ -37,10 +37,11 @@ type ListFetchResult struct {
 
 // Client 百度网盘青春版官方接口客户端
 type Client struct {
-	cfg        *config.Config
-	cache      *storage.FileListCache
-	httpClient *http.Client
-	baseURL    string
+	cfg          *config.Config
+	cache        *storage.FileListCache
+	httpClient   *http.Client
+	uploadClient *http.Client
+	baseURL      string
 
 	sessionMu sync.Mutex
 	uk        int64
@@ -56,11 +57,15 @@ func NewClient(cfg *config.Config, cache *storage.FileListCache, httpClient *htt
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: BaiduClientTimeout}
 	}
+	// 分片上传体量大、耗时远超普通 API，用独立的长超时客户端；
+	// Transport 沿用注入实例，保证测试可整体替换。
+	uploadClient := &http.Client{Timeout: UploadChunkTimeout, Transport: httpClient.Transport}
 	return &Client{
-		cfg:        cfg,
-		cache:      cache,
-		httpClient: httpClient,
-		baseURL:    baseURL,
+		cfg:          cfg,
+		cache:        cache,
+		httpClient:   httpClient,
+		uploadClient: uploadClient,
+		baseURL:      baseURL,
 	}
 }
 
@@ -416,13 +421,40 @@ func (c *Client) BaiduGet(apiURL string, ua string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %w", err)
 	}
+	c.setBaiduHeaders(req, ua)
+	return c.readAPIResponse(req, c.httpClient)
+}
 
+// BaiduPostForm 向百度网盘API发起 form 编码 POST 请求（上传链路用），Cookie由服务端注入
+func (c *Client) BaiduPostForm(apiURL string, form url.Values, ua string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodPost, apiURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.setBaiduHeaders(req, ua)
+	return c.readAPIResponse(req, c.httpClient)
+}
+
+// BaiduPostQuery 发起参数全部位于 query string、body 为空的 POST 请求
+// （青春版上传接口的约定形态），Cookie 由服务端注入。
+func (c *Client) BaiduPostQuery(apiURL string, ua string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodPost, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+	c.setBaiduHeaders(req, ua)
+	return c.readAPIResponse(req, c.httpClient)
+}
+
+func (c *Client) setBaiduHeaders(req *http.Request, ua string) {
 	// Cookie只在服务端注入，绝不返回给客户端
 	req.Header.Set("Cookie", c.cfg.BaiduCookie)
 	req.Header.Set("User-Agent", NormalizeDownloadUA(ua))
 	req.Header.Set("Referer", "https://pan.baidu.com/")
+}
 
-	client := c.httpClient
+func (c *Client) readAPIResponse(req *http.Request, client *http.Client) ([]byte, error) {
 	if client == nil {
 		client = &http.Client{Timeout: BaiduClientTimeout}
 	}
