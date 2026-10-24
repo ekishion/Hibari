@@ -3,7 +3,7 @@
 基于**百度网盘青春版**的临时中转网盘。
 
 - **后端**：Go 标准库为主；可选启用状态持久化时使用纯 Go SQLite 驱动（modernc.org/sqlite，无 CGO）
-- **前端**：极简响应式 HTML / CSS / JS（`go:embed` 打包进单二进制，零外部 CDN 依赖）
+- **前端**：Nuxt 4 单页应用（pnpm 构建，产物 `web/dist` 经 `go:embed` 打包进单二进制，零外部 CDN 依赖）
 - **安全**：Cookie 仅服务端托管，HMAC 会话签名防篡改，支持 IP 爆破退避锁定与 CSRF 防护
 - **权限**：支持 `access_token` 全局访问保护、共享目录白名单与透明目录短链（`/?d=令牌`）
 
@@ -47,27 +47,31 @@ openssl rand -hex 24
 
 ### 2. 本地运行与构建
 
-```bash
-# 本地开发运行
-go run ./cmd/jikeqingpan -config config.json
+后端通过 `go:embed` 嵌入前端产物，首次构建需先生成 `web/dist`：
 
-# 一键编译发布二进制
+```bash
+# 一键构建（前端 pnpm build + 后端 go build）
 bash build.sh
 ./cmd/bin/main -config config.json
+```
+
+前端开发模式（改动热更新）：
+
+```bash
+go run ./cmd/jikeqingpan -config config.json   # 后端 :4172
+cd frontend && pnpm install && pnpm dev        # 前端 :3000，/api 与 /d 自动代理到后端
 ```
 
 Windows PowerShell：
 
 ```powershell
-# 本地开发运行
-go run ./cmd/jikeqingpan -config config.json
-
-# 编译为 Windows 可执行文件
+# 构建前端产物后编译后端
+cd frontend; pnpm install; pnpm build; cd ..
 go build -o cmd/bin/main.exe ./cmd/jikeqingpan
 .\cmd\bin\main.exe -config config.json
 ```
 
-浏览器访问：`http://127.0.0.1:4172`
+浏览器访问：`http://127.0.0.1:4172`（直连后端）或开发模式 `http://localhost:3000`
 
 ### 3. Docker 部署（推荐）
 

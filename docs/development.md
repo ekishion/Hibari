@@ -6,7 +6,7 @@
 
 - **Go 版本**：建议 Go 1.26.0 或更高版本
 - **无需 CGO**：全项目使用纯 Go 开发，SQLite 驱动采用 `modernc.org/sqlite`，直接跨平台编译即可，无需系统 C 依赖
-- **无前端构建依赖**：前端直接写原生 HTML / CSS / JS，无需 npm 编译，构建时通过 `go:embed` 直接内嵌
+- **前端构建**：前端为 Nuxt 4 项目（`frontend/`，pnpm 管理），构建产物输出到 `web/dist` 由 `go:embed` 内嵌，需要 Node 22 + pnpm
 
 ## 项目结构
 
@@ -34,48 +34,36 @@
 │   │   ├── shortlink.go      # 下载短链存储、提取码与使用次数
 │   │   └── evict.go          # 通用近似 LRU 采样淘汰算法
 │   ├── baidu/                # 百度网盘青春版上游客户端封装
-│   │   └── baidu.go          # 文件列表翻页、Session 维持、直链签名与抓取
+│   │   ├── baidu.go          # HTTP 基础客户端、签名请求与错误归一化
+│   │   ├── list.go           # 文件列表翻页与文件元数据缓存
+│   │   ├── session.go        # Session（uk/sk）引导与维持
+│   │   ├── dlink.go          # 下载直链签名与获取
+│   │   └── upload.go         # 分片上传（precreate/superfile2/create）
 │   └── server/               # HTTP 服务引擎与路由处理器
-│       ├── server.go         # 依赖装配、安全中间件管道、静态路由与状态落盘
-│       ├── handlers.go       # 文件浏览、下载、分享与撤销 API
-│       ├── handlers_auth.go  # 登录、登出与会话状态 API
-│       ├── handlers_preview.go # README、文本与图片预览流式转发
-│       ├── httputil.go       # HTTP / Cookie / CSRF / IP 工具库
+│       ├── server.go         # 依赖装配与 HTTP Server 生命周期
+│       ├── routes.go         # 路由注册与安全选项（鉴权 / CSRF / 限流）
+│       ├── middleware.go     # 安全中间件：CSRF、鉴权、限流与安全响应头
+│       ├── handlers_files.go    # 文件列表与目录短链沙盒 API
+│       ├── handlers_download.go # 下载短链创建与 /d/ 访问
+│       ├── handlers_shares.go   # 分享元数据、分享管理与撤销 API
+│       ├── handlers_preview.go  # 文本/图片预览与流媒体中转
+│       ├── handlers_upload.go   # 分片上传与配额 API
+│       ├── handlers_auth.go     # 登录、登出与会话状态 API
 │       ├── pathsec.go        # 路径遍历防护与共享范围圈定
-│       └── template.go       # index.html + partials 启动时预渲染为内存整包
-├── web/                      # 前端静态资源与 Go 嵌入包
-│   ├── embed.go              # //go:embed static/* 导出前端静态资源 FS
-│   └── static/               # 前端静态文件（HTML / CSS / JS）
-│       ├── index.html        # HTML 外壳：按序注入 partials 模板并引入脚本
-│       ├── css/              # 按视觉领域拆分的样式表
-│       │   ├── app.css       # 样式入口：@import 汇聚以下各模块
-│       │   ├── base.css      # 设计令牌、重置、深色模式与排版
-│       │   ├── components.css # 按钮、下拉框、Toast、Spinner 等通用控件
-│       │   ├── browser.css   # 文件列表、面包屑、工具栏与搜索
-│       │   ├── modals.css    # 登录、创建分享、分享管理、解锁弹窗
-│       │   ├── preview.css   # 灯箱、音视频播放器与 Markdown 渲染
-│       │   └── landing.css   # 单文件分享落地卡片与提取码输入
-│       ├── js/               # 按分层组织的脚本库
-│       │   ├── app.js        # 应用入口：鉴权状态、事件绑定与启动调度
-│       │   ├── core/         # 底层工具与算法
-│       │   │   ├── api.js        # Fetch 封装、CSRF 注入与错误归一化
-│       │   │   ├── components.js # Toast、下拉控制器与剪贴板
-│       │   │   ├── icons.js      # 内联 SVG 图标注册表
-│       │   │   ├── markdown.js   # README 纯 DOM 安全 Markdown 渲染器
-│       │   │   └── qrcode.js     # 二维码矩阵生成
-│       │   └── modules/     # 业务功能控制器
-│       │       ├── file_browser.js # 列表渲染、目录进退、排序、搜索与多选
-│       │       ├── preview.js      # 多媒体灯箱视口与播放器控制
-│       │       ├── share_modal.js  # 分享创建、二维码与活跃分享管理
-│       │       └── share_page.js   # 单文件落地页与提取码校验
-│       └── partials/         # 拆分出的 HTML 组件模板片段
-│           ├── login_modal.html    # 访问权限验证登录弹窗
-│           ├── lightbox.html       # 全屏多媒体与代码灯箱预览器
-│           ├── share_modal.html    # 创建分享链接/提取码表单与结果卡片
-│           ├── shares_manage.html  # 活跃分享查看与手动撤销管理弹窗
-│           ├── unlock_modal.html   # 受限目录访问码解锁弹窗
-│           ├── app_main.html       # 主界面：Header、面包屑、工具栏、文件列表
-│           └── share_landing.html  # 独立单文件分享落地卡片容器
+│       ├── staticfiles.go    # 静态资源服务（gzip、不可变资源缓存）
+│       ├── template.go       # index.html 启动时预渲染为内存整包
+│       ├── persistence.go    # 状态持久化调度
+│       └── httputil.go       # HTTP / Cookie / CSRF / IP 工具库
+├── frontend/                 # Nuxt 4 前端项目（pnpm 管理，SPA 模式 ssr:false）
+│   ├── nuxt.config.ts        # 构建配置：产物输出 ../web/dist，devProxy 代理后端
+│   ├── app/                  # 页面、组件与 composables（按功能分层）
+│   │   ├── components/       # 文件列表、弹窗、工具栏、落地页等视图组件
+│   │   ├── composables/      # useAuth / useFiles / usePreview / useUpload 等状态层
+│   │   └── assets/css/       # 按视觉领域拆分的样式表（base/components/browser…）
+│   └── package.json          # 依赖与构建脚本（packageManager 锁定 pnpm 版本）
+├── web/                      # Go 嵌入包与前端构建产物
+│   ├── embed.go              # //go:embed all:dist 导出前端产物 FS
+│   └── dist/                 # pnpm build 生成的产物（不入库）
 ├── docs/                     # 完整开发、配置与部署文档
 ├── .github/
 │   └── workflows/
@@ -106,10 +94,9 @@ cmd/jikeqingpan
 
 ### 首页模板预渲染
 
-`index.html` 只是外壳，通过 `{{template "xxx" .}}` 按序注入 `partials/` 下的组件。
 前端为独立项目 `frontend/`（Nuxt 4 + pnpm，SPA 模式），构建产物输出到 `web/dist/`
-并由 `go:embed` 打进单二进制；`internal/server/template.go` 在服务启动时把 index.html
-一次性渲染成内存字节切片，`GET /` 直接输出，不产生额外网络请求。
+并由 `go:embed` 打进单二进制；`internal/server/template.go` 在服务启动时把构建产物的
+index.html 一次性渲染成内存字节切片，`GET /` 直接输出，不产生额外网络请求。
 
 ## 前端开发（frontend/）
 

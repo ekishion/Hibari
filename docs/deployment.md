@@ -105,7 +105,7 @@ git pull
 docker compose up -d --build
 ```
 
-修改 `web/static/` 下的资源后需重新 build（前端文件已通过 `go:embed` 编译进二进制）。
+修改 `frontend/` 下的前端资源后需重新构建：`bash build.sh` 一键完成，或 `cd frontend && pnpm build` 后重新编译后端——前端产物经 `go:embed` 编译进二进制。
 
 ## Nginx 反代示例
 
