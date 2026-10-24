@@ -177,14 +177,16 @@
   bottom: 26px;
   left: 50%;
   z-index: 3000;
+  /* 隐藏态必须完全透明且不拦截指针：否则默认空状态也会在底部常驻一个空胶囊 */
+  opacity: 0;
   transform: translateX(-50%) translateY(12px);
   transition: opacity 0.24s var(--ease-out), transform 0.28s var(--ease-out);
-  pointer-events: auto;
+  pointer-events: none;
   cursor: pointer;
   overflow-wrap: anywhere;
 }
 .toast.show,
-.toast.is-visible { opacity: 1; transform: translateX(-50%); }
+.toast.is-visible { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
 
 .toast-icon {
   display: inline-flex;

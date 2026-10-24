@@ -181,76 +181,16 @@
   align-items: stretch;
   gap: 0;
 }
-.sort-trigger {
-  gap: 7px;
+/* 触发器占胶囊左半、与 .btn-sort-dir 拼成一体；下拉菜单仍锚定触发器 */
+.sort-group .custom-select-trigger {
   height: 36px;
-  padding: 0 10px 0 13px;
+  min-width: 0;
   border-right: 0;
   border-radius: var(--r-sm) 0 0 var(--r-sm);
-  font-size: 0.8rem;
-  align-items: center;
 }
-.sort-trigger .sort-caret {
-  display: inline-flex;
-  align-items: center;
-  color: var(--text-3);
-  transition: transform 0.2s var(--ease-out);
-}
-.sort-trigger .sort-caret .icon { width: 14px; height: 14px; }
-.sort-trigger[aria-expanded="true"] { color: var(--text); border-color: var(--border-strong); }
-.sort-trigger[aria-expanded="true"] .sort-caret { transform: rotate(180deg); }
-/* 菜单与整个排序控件同宽、左对齐 */
-.sort-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 100%;
-  z-index: 1200;
-  padding: 5px;
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-lg);
-  animation: menu-in 0.16s var(--ease-out) both;
-}
-.sort-menu[hidden] { display: none; }
 @keyframes menu-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: none; }
-}
-.sort-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 11px;
-  background: none;
-  border: 0;
-  border-radius: 8px;
-  color: var(--text-2);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 550;
-  letter-spacing: -0.01em;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.14s, color 0.14s;
-  -webkit-tap-highlight-color: transparent;
-}
-.sort-option:hover { background: var(--surface-sunken); color: var(--text); }
-.sort-option:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--ring);
-}
-.sort-option.is-active { color: var(--text); }
-/* 当前项用单色墨点标记，不引入彩色高亮 */
-.sort-option.is-active::after {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ink);
 }
 .btn-sort-dir {
   height: 36px;
@@ -620,11 +560,11 @@
     width: 100%;
     min-width: 0;
   }
-  /* 移动端第二行：计数 | 排序 | 分享 | 刷新 同一排 */
+  /* 移动端第二行：计数 | 排序 | 上传 | 刷新 同一排 */
   .file-count { grid-column: 1; grid-row: 2; padding-left: 0; }
   .sort-group { grid-column: 2; grid-row: 2; justify-self: end; }
-  .btn-share { grid-column: 3; grid-row: 2; justify-self: end; padding: 9px; }
-  .btn-share .btn-label { display: none; }
+  .btn-upload { grid-column: 3; grid-row: 2; justify-self: end; padding: 9px; }
+  .btn-upload .btn-label { display: none; }
   .btn-refresh { grid-column: 4; grid-row: 2; justify-self: end; padding: 9px; }
   .btn-refresh .btn-label { display: none; }
 
