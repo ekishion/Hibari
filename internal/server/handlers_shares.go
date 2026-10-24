@@ -58,6 +58,7 @@ func (s *Server) handleDirLink(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleShareInfo 获取单文件短链公开元数据或校验提取码。
+// 响应刻意不含 file_path：那是内部网盘绝对路径，访客凭 token + download_url 即可完成下载。
 func (s *Server) handleShareInfo(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 	var request struct {
@@ -110,7 +111,6 @@ func (s *Server) handleShareInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"token":          token,
-			"file_path":      meta.FilePath,
 			"file_name":      meta.FileName,
 			"has_password":   true,
 			"password_valid": true,
@@ -135,7 +135,6 @@ func (s *Server) handleShareInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"token":          token,
-		"file_path":      meta.FilePath,
 		"file_name":      meta.FileName,
 		"has_password":   false,
 		"password_valid": true,

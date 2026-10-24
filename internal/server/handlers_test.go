@@ -408,3 +408,36 @@ func TestHandleSharesListAndRevoke(t *testing.T) {
 		t.Fatalf("expected 0 total shares, got %d", listResp2.Total)
 	}
 }
+
+// handleShareInfo 是公开端点：响应不得包含内部网盘绝对路径（有提取码与无提取码一致）。
+func TestHandleShareInfo_NoFilePathLeak(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none"}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+
+	for _, password := range []string{"123456", ""} {
+		token, err := s.shortLinks.CreateWithOptions("/private/docs/report.pdf", password, time.Hour, -1)
+		if err != nil {
+			t.Fatalf("create shortlink failed: %v", err)
+		}
+		body := `{"token":"` + token + `","password":"` + password + `"}`
+		req := httptest.NewRequest(http.MethodPost, "/api/share/info", bytes.NewReader([]byte(body)))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		s.handleShareInfo(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("password=%q: expected 200 OK, got %d: %s", password, rec.Code, rec.Body.String())
+		}
+		var data map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &data); err != nil {
+			t.Fatalf("password=%q: unmarshal response failed: %v", password, err)
+		}
+		if name, _ := data["file_name"].(string); name != "report.pdf" {
+			t.Fatalf("password=%q: unexpected file_name in response: %v", password, data["file_name"])
+		}
+		if _, leaked := data["file_path"]; leaked || bytes.Contains(rec.Body.Bytes(), []byte("/private/docs")) {
+			t.Fatalf("password=%q: response leaked internal path: %s", password, rec.Body.String())
+		}
+	}
+}
