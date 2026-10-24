@@ -167,7 +167,7 @@ func TestHandleShareInfo_PasswordAndMeta(t *testing.T) {
 		t.Fatalf("create shortlink failed: %v", err)
 	}
 
-	// 1. 未提供提取码：返回元数据与 password_valid=false
+	// 1. 未提供提取码：返回待验证标记，且不暴露文件名
 	req1 := httptest.NewRequest(http.MethodPost, "/api/share/info", bytes.NewReader([]byte(`{"token":"`+token+`"}`)))
 	req1.Header.Set("Content-Type", "application/json")
 	rec1 := httptest.NewRecorder()
@@ -181,8 +181,11 @@ func TestHandleShareInfo_PasswordAndMeta(t *testing.T) {
 		PasswordValid bool   `json:"password_valid"`
 	}
 	_ = json.Unmarshal(rec1.Body.Bytes(), &res1)
-	if res1.FileName != "guide.pdf" || !res1.HasPassword || res1.PasswordValid {
+	if !res1.HasPassword || res1.PasswordValid {
 		t.Fatalf("unexpected res1: %+v", res1)
+	}
+	if res1.FileName != "" || bytes.Contains(rec1.Body.Bytes(), []byte("guide.pdf")) {
+		t.Fatalf("pending response must not expose file name: %s", rec1.Body.String())
 	}
 
 	// 2. 提供错误提取码：返回 401
@@ -439,6 +442,34 @@ func TestHandleShareInfo_NoFilePathLeak(t *testing.T) {
 		if _, leaked := data["file_path"]; leaked || bytes.Contains(rec.Body.Bytes(), []byte("/private/docs")) {
 			t.Fatalf("password=%q: response leaked internal path: %s", password, rec.Body.String())
 		}
+	}
+}
+
+// 未验证提取码前，分享信息不暴露文件名。
+func TestHandleShareInfo_PendingNoFileName(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none"}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+
+	token, err := s.shortLinks.CreateWithOptions("/private/动漫男孩.png", "654321", time.Hour, -1)
+	if err != nil {
+		t.Fatalf("create shortlink failed: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	s.handleShareInfo(rec, httptest.NewRequest(http.MethodPost, "/api/share/info", bytes.NewReader([]byte(`{"token":"`+token+`","password":""}`))))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 pending info, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var data map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &data); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if data["has_password"] != true || data["password_valid"] != false {
+		t.Fatalf("unexpected pending flags: %v", data)
+	}
+	if _, leaked := data["file_name"]; leaked || bytes.Contains(rec.Body.Bytes(), []byte("动漫男孩")) {
+		t.Fatalf("pending response leaked file name: %s", rec.Body.String())
 	}
 }
 

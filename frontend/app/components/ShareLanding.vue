@@ -22,7 +22,7 @@ const { showToast } = useToast()
 type CardState =
   | { kind: "loading" }
   | { kind: "error"; title: string; message: string }
-  | { kind: "password"; fileName: string; error: string }
+  | { kind: "password"; error: string }
   | { kind: "ready"; info: ShareInfo }
 
 const card = ref<CardState>({ kind: "loading" })
@@ -59,7 +59,7 @@ async function fetchShareInfo(token: string, password: string) {
       return
     }
     if (resp.status === 401) {
-      card.value = { kind: "password", fileName: "", error: password ? "提取码错误，请重新输入" : "" }
+      card.value = { kind: "password", error: password ? "提取码错误，请重新输入" : "" }
       return
     }
     if (!resp.ok) {
@@ -69,7 +69,7 @@ async function fetchShareInfo(token: string, password: string) {
     }
     const data: ShareInfo = await resp.json()
     if (data.has_password && !data.password_valid) {
-      card.value = { kind: "password", fileName: data.file_name, error: "" }
+      card.value = { kind: "password", error: "" }
       nextTick(() => pwdField.value?.focus())
       return
     }
@@ -95,14 +95,14 @@ async function submitPassword() {
       body: JSON.stringify({ token: props.token, password: val }),
     })
     if (resp.status === 401) {
-      card.value = { kind: "password", fileName: card.value.fileName, error: "提取码错误，请重新核对后输入" }
+      card.value = { kind: "password", error: "提取码错误，请重新核对后输入" }
       shake(pwdField.value)
       pwdField.value?.focus()
       return
     }
     if (!resp.ok) {
       const text = await resp.text()
-      card.value = { kind: "password", fileName: card.value.fileName, error: await parseAPIError(resp, text) }
+      card.value = { kind: "password", error: await parseAPIError(resp, text) }
       return
     }
     const data: ShareInfo = await resp.json()
@@ -137,7 +137,7 @@ function startDownload(downloadUrl?: string) {
 
       <div v-else-if="card.kind === 'password'" class="share-landing-card">
         <div class="landing-squircle-badge"><AppIcon name="lock" :size="22" /></div>
-        <h1 class="landing-title">{{ card.fileName || "受密码保护的文件" }}</h1>
+        <h1 class="landing-title">受密码保护的文件</h1>
         <p class="landing-desc">该分享链接已设置提取码，请输入访问码提取并下载。</p>
         <form class="landing-form" novalidate @submit.prevent="submitPassword">
           <div class="landing-input-wrap">
@@ -147,7 +147,7 @@ function startDownload(downloadUrl?: string) {
               type="text"
               name="pwd"
               class="landing-password-input"
-              placeholder="请输入 6 位提取码"
+              placeholder="请输入提取码"
               autocomplete="off"
               maxlength="16"
               autofocus
@@ -165,7 +165,7 @@ function startDownload(downloadUrl?: string) {
         <div class="landing-squircle-badge">
           <AppIcon :name="fileIconMeta(card.info.file_name, false).name" :size="22" />
         </div>
-        <h1 class="landing-title">{{ card.info.file_name || "文件下载" }}</h1>
+        <h1 class="landing-title">文件下载</h1>
         <div class="landing-meta-tags">
           <span v-if="card.info.size" class="landing-meta-tag">{{ formatSize(card.info.size) }}</span>
           <span v-if="card.info.has_password" class="landing-meta-tag is-badge">提取码已验证</span>
