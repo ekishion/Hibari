@@ -127,15 +127,19 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		listBody = filtered
 	}
 
-	// 无论是缓存还是实时获取，都统一过一次范围过滤（防御 AllowedPaths 动态调整）
-	filteredBody, err := s.filterFileList(listBody)
-	if err != nil {
-		log.Printf("[ERROR] 过滤共享范围失败: %v", err)
-		writeJSONError(w, http.StatusBadGateway, "list_process_failed", "文件列表处理失败")
-		return
+	// 缓存命中的列表重过一次范围过滤（防御 AllowedPaths 动态调整）；
+	// 实时获取的列表在上方已过滤，跳过重复的全量 JSON 解析
+	if fromCache {
+		filteredBody, err := s.filterFileList(listBody)
+		if err != nil {
+			log.Printf("[ERROR] 过滤共享范围失败: %v", err)
+			writeJSONError(w, http.StatusBadGateway, "list_process_failed", "文件列表处理失败")
+			return
+		}
+		listBody = filteredBody
 	}
 
-	publicBody, err := baidu.StripDownloadLinks(filteredBody)
+	publicBody, err := baidu.StripDownloadLinks(listBody)
 	if err != nil {
 		log.Printf("[ERROR] 清理文件列表直链失败: %v", err)
 		writeJSONError(w, http.StatusBadGateway, "list_process_failed", "文件列表处理失败，请稍后重试")
