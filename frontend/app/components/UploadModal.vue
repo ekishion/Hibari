@@ -5,7 +5,7 @@
 const props = defineProps<{ dir: string }>()
 const emit = defineEmits<{ close: [] }>()
 
-const { state, pendingCount, addFiles, removeItem, resetQueue, startUpload, abortCurrent } = useUpload()
+const { state, pendingCount, quotaFree, addFiles, removeItem, resetQueue, startUpload, abortCurrent } = useUpload()
 const { uiConfig } = useAuth()
 const { showToast } = useToast()
 const { currentFiles } = useFiles()
@@ -15,7 +15,6 @@ const visible = ref(true)
 const quotaText = ref("正在获取网盘容量…")
 const quotaPercent = ref(0)
 const quotaWarn = ref(false)
-const freeBytes = ref(0)
 const dropzoneActive = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const listBox = ref<HTMLElement | null>(null)
@@ -59,7 +58,7 @@ async function loadQuota() {
     quotaText.value = `已用 ${formatSize(used)} / 共 ${formatSize(total)} · 剩余 ${formatSize(free)}`
     quotaPercent.value = percent
     quotaWarn.value = percent >= 90
-    freeBytes.value = free
+    quotaFree.value = free
   } catch (err) {
     quotaText.value = "容量获取失败：" + ((err as Error).message || "未知错误")
   }
@@ -124,7 +123,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <div id="upload-quota" class="upload-quota" aria-live="polite" :data-free="String(freeBytes)">
+        <div id="upload-quota" class="upload-quota" aria-live="polite">
           <div class="upload-quota-text">{{ quotaText }}</div>
           <div class="upload-quota-bar" aria-hidden="true">
             <div class="upload-quota-fill" :class="{ 'is-warning': quotaWarn }" :style="{ width: quotaPercent + '%' }" />

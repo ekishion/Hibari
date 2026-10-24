@@ -28,6 +28,10 @@ const state = reactive<UploadState>({
   failed: 0,
 })
 
+// 最近一次探测到的网盘剩余容量（字节）：由上传弹窗拉取 /api/quota 后写入；
+// 0 表示未知（未知时跳过客户端容量预检，服务端 create 阶段仍有兜底）
+const quotaFree = ref(0)
+
 let nextId = 1
 let currentXHR: XMLHttpRequest | null = null
 
@@ -43,7 +47,7 @@ export function useUpload() {
   }
 
   function quotaFreeBytes(): number {
-    return Number((typeof document !== "undefined" ? (document.getElementById("upload-quota") as HTMLElement | null)?.dataset.free : "0") || "0") || 0
+    return quotaFree.value
   }
 
   function addFiles(fileList: FileList | File[] | null) {
@@ -201,6 +205,7 @@ export function useUpload() {
 
   return {
     state,
+    quotaFree,
     pendingCount,
     addFiles,
     removeItem,

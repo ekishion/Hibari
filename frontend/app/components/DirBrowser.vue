@@ -80,8 +80,16 @@ onMounted(async () => {
       if (pwd) currentDirPassword.value = pwd
       await loadFiles("")
     } else {
-      // 已持有会话时 checkAuth 会置位 authenticated，加载统一交给下方 watch，避免双重请求
-      await checkAuth()
+      // 从目录短链沙盒切回全盘模式时清理残留状态，避免沿用旧 token 与目录
+      currentDirToken.value = ""
+      currentDirPassword.value = ""
+      sandboxRoot.value = ""
+      currentDir.value = ""
+      // authenticated 首次置位由下方 watch 触发加载；SPA 内重挂载时它早已为
+      // true、watch 不会再触发，这里补一次加载（避免从分享页返回后列表空白）
+      const wasAuthenticated = authenticated.value
+      const ok = await checkAuth()
+      if (ok && wasAuthenticated) loadFiles((route.query.dir as string) || "/")
     }
   } catch (err) {
     requireLogin((err as Error).message || "无法确认登录状态，请刷新页面重试")
