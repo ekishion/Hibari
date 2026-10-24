@@ -230,7 +230,7 @@ defineExpose({ closeShare })
           </div>
 
           <div class="share-actions">
-            <button type="button" id="btn-create-share" class="btn btn-primary btn-block" :disabled="submitting" @click="createShare">
+            <button type="button" id="btn-create-share" class="btn btn-primary btn-block" :class="{ 'is-loading': submitting }" :disabled="submitting" @click="createShare">
               <span class="btn-spinner"><AppIcon name="loader" :size="16" /></span>
               <span class="btn-label">{{ submitting ? "正在生成…" : "生成分享链接与二维码" }}</span>
             </button>

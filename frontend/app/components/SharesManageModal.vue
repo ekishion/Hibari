@@ -198,6 +198,7 @@ async function revoke(item: ShareItem) {
                 <button
                   type="button"
                   class="btn btn-ghost btn-sm btn-revoke"
+                  :class="{ 'is-loading': revoking === item.token }"
                   title="撤销并废除该分享链接"
                   :disabled="revoking === item.token"
                   @click="revoke(item)"

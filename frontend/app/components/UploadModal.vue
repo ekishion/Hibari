@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
 
         <div class="upload-actions">
           <span class="upload-actions-hint" id="upload-summary">{{ summaryText }}</span>
-          <button type="button" class="btn btn-primary" :disabled="!canStart" @click="beginUpload">
+          <button type="button" class="btn btn-primary" :class="{ 'is-loading': state.uploading }" :disabled="!canStart" @click="beginUpload">
             <span class="btn-spinner"><AppIcon name="loader" :size="16" /></span>
             <span class="btn-label">{{ state.uploading ? "上传中…" : "开始上传" }}</span>
           </button>

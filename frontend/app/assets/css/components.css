@@ -49,13 +49,16 @@
 /* 提交中：指示器旋转，保持可读的不可用态 */
 .btn.is-loading { cursor: progress; opacity: 0.75; }
 .btn.is-loading .btn-icon .icon { animation: spin 0.85s linear infinite; }
-/* setButtonLoading 生成的加载指示器：独立于 btn-icon 结构，自旋 */
+/* 加载指示器：仅在按钮携带 is-loading 时渲染（登录/分享/撤销等提交动作），
+   空闲时常驻会把旋转圈画在普通按钮上 */
 .btn-spinner {
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
+.btn.is-loading .btn-spinner,
+.shares-loading .btn-spinner { display: inline-flex; }
 .btn-spinner .icon { width: 16px; height: 16px; animation: spin 0.85s linear infinite; }
 
 

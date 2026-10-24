@@ -92,7 +92,7 @@ async function submit() {
             >
           </div>
           <div class="login-actions">
-            <button type="submit" class="btn btn-primary" :disabled="submitting || countdown > 0">
+            <button type="submit" class="btn btn-primary" :class="{ 'is-loading': submitting }" :disabled="submitting || countdown > 0">
               <span class="btn-spinner"><AppIcon name="loader" :size="16" /></span>
               <span class="btn-label">{{ countdown > 0 ? `请等待 ${countdown} 秒` : "验证并进入" }}</span>
             </button>

@@ -157,7 +157,7 @@ function startDownload(downloadUrl?: string) {
             >
           </div>
           <div class="landing-error-tip" :hidden="!card.error">{{ card.error }}</div>
-          <button type="submit" class="btn btn-primary btn-block" :disabled="verifying">
+          <button type="submit" class="btn btn-primary btn-block" :class="{ 'is-loading': verifying }" :disabled="verifying">
             <span class="btn-spinner"><AppIcon name="loader" :size="16" /></span>
             <span class="btn-label">{{ verifying ? "正在验证…" : "立即提取并下载" }}</span>
           </button>
