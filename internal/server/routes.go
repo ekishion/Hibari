@@ -70,20 +70,22 @@ func (s *Server) routes() {
 		rateLimit:   true,
 		methods:     []string{http.MethodPost},
 	}))
+	// 以下三个单文件读取端点的鉴权在 handler 内完成：管理员会话或目录短链 token 二选一
+	// （沙盒访客凭 token+提取码可预览/播放/下载沙盒内文件），因此中间件不再统一拦截。
 	s.mux.HandleFunc("/api/preview", s.withSecurity(s.handlePreview, securityOpts{
-		requireAuth: true,
+		requireAuth: false,
 		csrf:        true,
 		rateLimit:   true,
 		methods:     []string{http.MethodPost},
 	}))
 	s.mux.HandleFunc("/api/text", s.withSecurity(s.handleTextPreview, securityOpts{
-		requireAuth: true,
+		requireAuth: false,
 		csrf:        true,
 		rateLimit:   true,
 		methods:     []string{http.MethodPost},
 	}))
 	s.mux.HandleFunc("/api/stream", s.withSecurity(s.handleStream, securityOpts{
-		requireAuth: true,
+		requireAuth: false,
 		csrf:        false, // 只读中转：GET 无状态变更，无需 CSRF
 		rateLimit:   true,
 		methods:     []string{http.MethodGet, http.MethodHead},

@@ -441,3 +441,98 @@ func TestHandleShareInfo_NoFilePathLeak(t *testing.T) {
 		}
 	}
 }
+
+// 根目录短链的沙盒即全盘：子目录列表不得被 "//" 前缀误伤；非根短链越界依旧拒绝。
+func TestHandleFiles_RootDirLinkSandbox(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none"}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+
+	rootToken, err := s.dirLinks.CreateWithOptions("/", "", time.Hour)
+	if err != nil {
+		t.Fatalf("create root dir link failed: %v", err)
+	}
+	// 预置子目录列表缓存，测试离线且确定
+	sample := []byte(`{"errno":0,"list":[{"fs_id":1,"path":"/Game/setup.exe","server_filename":"setup.exe","isdir":0,"dlink":"https://fake/dlink"}]}`)
+	s.cache.SetDirList("/Game", sample)
+
+	rec := httptest.NewRecorder()
+	s.handleFiles(rec, httptest.NewRequest(http.MethodPost, "/api/files", bytes.NewReader([]byte(`{"dir":"/Game","token":"`+rootToken+`"}`))))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("root dir link subdir expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var data struct {
+		SandboxRoot string `json:"sandbox_root"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &data); err != nil {
+		t.Fatalf("unmarshal response failed: %v", err)
+	}
+	if data.SandboxRoot != "/" {
+		t.Fatalf("expected sandbox_root \"/\", got %q", data.SandboxRoot)
+	}
+
+	docsToken, err := s.dirLinks.CreateWithOptions("/docs", "", time.Hour)
+	if err != nil {
+		t.Fatalf("create docs dir link failed: %v", err)
+	}
+	rec2 := httptest.NewRecorder()
+	s.handleFiles(rec2, httptest.NewRequest(http.MethodPost, "/api/files", bytes.NewReader([]byte(`{"dir":"/etc","token":"`+docsToken+`"}`))))
+	if rec2.Code != http.StatusForbidden {
+		t.Fatalf("sandbox escape expected 403, got %d: %s", rec2.Code, rec2.Body.String())
+	}
+}
+
+// 提取码反馈：错误码与缺失码返回可区分的错误语义。
+func TestHandleFiles_SharePasswordFeedback(t *testing.T) {
+	cfg := &config.Config{StateBackend: "none"}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+
+	token, err := s.dirLinks.CreateWithOptions("/docs", "654321", time.Hour)
+	if err != nil {
+		t.Fatalf("create dir link failed: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	s.handleFiles(rec, httptest.NewRequest(http.MethodPost, "/api/files", bytes.NewReader([]byte(`{"dir":"","token":"`+token+`","password":"000000"}`))))
+	if rec.Code != http.StatusUnauthorized || !bytes.Contains(rec.Body.Bytes(), []byte("share_password_incorrect")) {
+		t.Fatalf("wrong password expected 401 share_password_incorrect, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec2 := httptest.NewRecorder()
+	s.handleFiles(rec2, httptest.NewRequest(http.MethodPost, "/api/files", bytes.NewReader([]byte(`{"dir":"","token":"`+token+`"}`))))
+	if rec2.Code != http.StatusUnauthorized || !bytes.Contains(rec2.Body.Bytes(), []byte("share_password_required")) {
+		t.Fatalf("missing password expected 401 share_password_required, got %d: %s", rec2.Code, rec2.Body.String())
+	}
+}
+
+// 沙盒访客凭目录短链 token 可通过单文件读取端点的鉴权；
+// 开启全站鉴权的部署下无 token 仍 401。
+func TestHandleStream_DirLinkTokenAccess(t *testing.T) {
+	// 测试内连发两个请求，显式放宽限流（手工构造的 config 不经过 LoadConfig 默认值）
+	cfg := &config.Config{StateBackend: "none", AccessToken: "top-secret-token", RateLimitPerSecond: 100}
+	memFS := fstest.MapFS{"static/index.html": &fstest.MapFile{Data: []byte("<html></html>")}}
+	s := NewServer(cfg, memFS, "test")
+	defer s.Close()
+	handler := s.Handler()
+
+	token, err := s.dirLinks.CreateWithOptions("/", "", time.Hour)
+	if err != nil {
+		t.Fatalf("create root dir link failed: %v", err)
+	}
+
+	// 带有效 token：通过鉴权，走到文件元数据阶段（离线确定性 404 file_not_found）
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stream?path=/Game/a.mp4&token="+token, nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("token access expected to pass auth and hit file meta (404 offline), got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec2 := httptest.NewRecorder()
+	handler.ServeHTTP(rec2, httptest.NewRequest(http.MethodGet, "/api/stream?path=/Game/a.mp4", nil))
+	if rec2.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without token, got %d: %s", rec2.Code, rec2.Body.String())
+	}
+}

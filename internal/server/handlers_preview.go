@@ -3,8 +3,10 @@ package server
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"mime"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -111,23 +113,61 @@ func isTextPreviewableExt(name string) bool {
 	return ok
 }
 
+// authorizeFileAccess 校验单文件读取类端点（预览/文本/流）的访问凭证：
+// 目录短链 token（可选提取码）与全站管理员会话二选一，失败时已写出错误响应。
+// 目录短链通道要求目标文件严格位于沙盒子树内（根目录短链即全盘），并叠加 pathAllowed 防御。
+func (s *Server) authorizeFileAccess(w http.ResponseWriter, r *http.Request, filePath, token, password string) bool {
+	if !config.IsValidBaiduPath(filePath) {
+		writeJSONError(w, http.StatusBadRequest, "invalid_path", "文件路径无效")
+		return false
+	}
+	if token != "" {
+		resolved, ok, passwordRequired := s.dirLinks.ResolveWithPassword(token, password)
+		if passwordRequired {
+			// 带了密码仍要求提取码 ⇒ 密码不对
+			if password != "" {
+				writeJSONError(w, http.StatusUnauthorized, "share_password_incorrect", "提取码错误，请重新输入")
+				return false
+			}
+			writeJSONError(w, http.StatusUnauthorized, "share_password_required", "该分享目录受访问码保护，请输入提取码")
+			return false
+		}
+		if !ok {
+			writeJSONError(w, http.StatusUnauthorized, "dirlink_not_found", "目录链接已失效，请从分享入口重新进入")
+			return false
+		}
+		sandboxRoot := path.Clean(resolved)
+		prefix := strings.TrimSuffix(sandboxRoot, "/") + "/"
+		if !strings.HasPrefix(path.Clean(filePath), prefix) {
+			log.Printf("[SECURITY] 拦截目录短链越权取文件: 授权根目录 %q, 试图访问 %q", sandboxRoot, filePath)
+			writeJSONError(w, http.StatusForbidden, "path_not_allowed", "越界访问被拒绝：超出共享目录范围")
+			return false
+		}
+	} else if s.cfg.AuthEnabled() && !s.hasValidAccess(r) {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized", "请先验证访问权限")
+		return false
+	}
+	if !s.pathAllowed(filePath) {
+		writeJSONError(w, http.StatusForbidden, "path_not_allowed", "该文件不在共享范围内")
+		return false
+	}
+	return true
+}
+
 // handleTextPreview 返回文本/代码文件内容，供前端在灯箱中安全渲染。
 // 内容以 JSON 字符串回传，前端用 textContent/安全渲染器展示，无注入面。
 func (s *Server) handleTextPreview(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 	var request struct {
-		Path string `json:"path"`
+		Path     string `json:"path"`
+		Token    string `json:"token"`
+		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "bad_request", "请求内容有误，请刷新页面重试")
 		return
 	}
-	if !config.IsValidBaiduPath(request.Path) {
-		writeJSONError(w, http.StatusBadRequest, "invalid_path", "文件路径无效")
-		return
-	}
-	if !s.pathAllowed(request.Path) {
-		writeJSONError(w, http.StatusForbidden, "path_not_allowed", "该文件不在共享范围内")
+	if !s.authorizeFileAccess(w, r, request.Path, request.Token, request.Password) {
 		return
 	}
 	if !isTextPreviewableExt(request.Path) {
@@ -196,18 +236,15 @@ func isReadmeFileName(name string) bool {
 func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 8*1024)
 	var request struct {
-		Path string `json:"path"`
+		Path     string `json:"path"`
+		Token    string `json:"token"`
+		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "bad_request", "请求内容有误，请刷新页面重试")
 		return
 	}
-	if !config.IsValidBaiduPath(request.Path) {
-		writeJSONError(w, http.StatusBadRequest, "invalid_path", "文件路径无效")
-		return
-	}
-	if !s.pathAllowed(request.Path) {
-		writeJSONError(w, http.StatusForbidden, "path_not_allowed", "该文件不在共享范围内")
+	if !s.authorizeFileAccess(w, r, request.Path, request.Token, request.Password) {
 		return
 	}
 	meta, err := s.baiduClient.EnsureFileMeta(request.Path)
@@ -268,12 +305,12 @@ func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {
 // 供前端在赋值媒体 src 或触发下载前获得可读错误（与图片/文本预览的错误体验一致）。
 func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	filePath := r.URL.Query().Get("path")
-	if !config.IsValidBaiduPath(filePath) {
-		writeJSONError(w, http.StatusBadRequest, "invalid_path", "文件路径无效")
-		return
+	token := r.URL.Query().Get("token")
+	password := strings.TrimSpace(r.URL.Query().Get("pwd"))
+	if password == "" {
+		password = strings.TrimSpace(r.URL.Query().Get("password"))
 	}
-	if !s.pathAllowed(filePath) {
-		writeJSONError(w, http.StatusForbidden, "path_not_allowed", "该文件不在共享范围内")
+	if !s.authorizeFileAccess(w, r, filePath, token, password) {
 		return
 	}
 	meta, err := s.baiduClient.EnsureFileMeta(filePath)
