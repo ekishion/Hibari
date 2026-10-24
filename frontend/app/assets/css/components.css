@@ -165,7 +165,8 @@
   align-items: center;
   gap: 10px;
   width: max-content;
-  max-width: min(360px, calc(100vw - 32px));
+  /* 桌面端放宽到 720px 保持单行；窄屏仍由 calc 上限回退换行 */
+  max-width: min(720px, calc(100vw - 32px));
   padding: 11px 16px;
   border-radius: var(--r-md);
   background: var(--elevated);
