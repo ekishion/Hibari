@@ -561,13 +561,12 @@
     width: 100%;
     min-width: 0;
   }
-  /* 移动端第二行：计数 | 排序 | 上传 | 刷新 同一排 */
+  /* 移动端第二行：计数 | 排序 | 上传 | 刷新 同一排；
+     上传/刷新自动补位（上传关闭时刷新紧跟排序，不留空档） */
   .file-count { grid-column: 1; grid-row: 2; padding-left: 0; }
   .sort-group { grid-column: 2; grid-row: 2; justify-self: end; }
-  .btn-upload { grid-column: 3; grid-row: 2; justify-self: end; padding: 9px; }
-  .btn-upload .btn-label { display: none; }
-  .btn-refresh { grid-column: 4; grid-row: 2; justify-self: end; padding: 9px; }
-  .btn-refresh .btn-label { display: none; }
+  .btn-upload, .btn-refresh { justify-self: end; padding: 9px; }
+  .btn-upload .btn-label, .btn-refresh .btn-label { display: none; }
 
   .file-item {
     display: grid;
