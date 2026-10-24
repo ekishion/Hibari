@@ -14,7 +14,7 @@
   --ink-contrast: #ffffff; /* 反相：用于墨底上的文字/图标 */
 
   /* 表面 */
-  --bg: #ffffff;
+  --bg: #f4f5f7;           /* 页面底色：浅灰，衬出白色卡面 */
   --surface: #ffffff;
   --surface-hover: #fafafa;
   --surface-sunken: #f4f4f5;

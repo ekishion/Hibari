@@ -232,7 +232,8 @@
   padding: 52px 16px 56px;
   border: 1px dashed var(--border-strong);
   border-radius: var(--r-md);
-  background: var(--surface-sunken);
+  /* 页面背景已调灰，空态盒保持卡面白，避免与背景融为一体 */
+  background: var(--surface);
   text-align: center;
 }
 .empty-state p {
