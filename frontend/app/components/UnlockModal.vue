@@ -12,7 +12,8 @@ const pwdInput = ref<HTMLInputElement | null>(null)
 watch(visible, (open) => {
   if (open) {
     password.value = ""
-    errorMessage.value = ""
+    // 打开时展示上次失败原因（如"提取码错误，请重新输入"）
+    errorMessage.value = unlockRequest.value.message
     nextTick(() => pwdInput.value?.focus())
   }
 })
@@ -33,7 +34,7 @@ async function submit() {
 }
 
 function onCancel() {
-  unlockRequest.value = { open: false, onUnlock: () => {} }
+  unlockRequest.value = { open: false, message: "", onUnlock: () => {} }
   showToast("已取消解锁，返回首页", "info")
   navigateTo("/")
 }

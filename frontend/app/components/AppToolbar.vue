@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // 工具栏：文件计数 + 搜索 + 排序 + 上传（门控）+ 刷新
 // （分享入口只保留文件行内的"分享"与页头"分享管理"，不提供整目录快捷分享）
-const { visibleFiles, searchQuery, currentDir, loadFiles, resetFileSearch } = useFiles()
+const { visibleFiles, searchQuery, currentDir, loadFiles, resetFileSearch, currentDirToken } = useFiles()
 const { uiConfig, authRequired, authenticated, requireLogin } = useAuth()
 
 const emit = defineEmits<{ openUpload: [] }>()
 
 const searchInput = ref<HTMLInputElement | null>(null)
+
+// 目录短链沙盒模式：token 即访客凭证，刷新/上传按访客语义处理
+const inSandbox = computed(() => !!currentDirToken.value)
+const canUpload = computed(() => uiConfig.uploadEnabled && !inSandbox.value && !(authRequired.value && !authenticated.value))
 
 // "/" 快捷键聚焦搜索
 function onKeydown(e: KeyboardEvent) {
@@ -20,6 +24,10 @@ onMounted(() => document.addEventListener("keydown", onKeydown))
 onBeforeUnmount(() => document.removeEventListener("keydown", onKeydown))
 
 function onRefresh() {
+  if (inSandbox.value) {
+    loadFiles(currentDir.value || "", { refresh: true })
+    return
+  }
   if (authRequired.value && !authenticated.value) {
     requireLogin("")
     return
@@ -49,7 +57,7 @@ function onRefresh() {
       </label>
       <SortMenu />
       <button
-        v-if="uiConfig.uploadEnabled"
+        v-if="canUpload"
         type="button"
         class="btn btn-ghost btn-upload"
         aria-label="上传文件到当前目录"

@@ -8,7 +8,7 @@ const dirToken = computed(() => (route.query.d as string) || "")
 
 <template>
   <main>
-    <ShareLanding v-if="shareToken" :token="shareToken" />
-    <DirBrowser v-else :dir-token="dirToken" />
+    <ShareLanding v-if="shareToken" :key="shareToken" :token="shareToken" />
+    <DirBrowser v-else :key="dirToken || 'root'" :dir-token="dirToken" />
   </main>
 </template>

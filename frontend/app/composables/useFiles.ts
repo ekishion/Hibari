@@ -69,9 +69,10 @@ const readmeState = reactive<{ visible: boolean; content: string; source: string
 })
 const readmeSeq = ref(0)
 
-// 目录短链解锁弹窗回调（由 UnlockModal 组件消费）
-const unlockRequest = ref<{ open: boolean; onUnlock: (pwd: string) => void }>({
+// 目录短链解锁弹窗回调（由 UnlockModal 组件消费）；message 为上次失败的可读原因
+const unlockRequest = ref<{ open: boolean; message: string; onUnlock: (pwd: string) => void }>({
   open: false,
+  message: "",
   onUnlock: () => {},
 })
 
@@ -114,13 +115,14 @@ export function useFiles() {
     searchQuery.value = ""
   }
 
-  // 目录短链解锁：打开弹窗并在解锁成功后携带新提取码重载
-  function requestUnlock(retry: () => void) {
+  // 目录短链解锁：打开弹窗（携带上次失败原因）并在解锁成功后携带新提取码重载
+  function requestUnlock(retry: () => void, message = "") {
     unlockRequest.value = {
       open: true,
+      message,
       onUnlock: (pwd: string) => {
         currentDirPassword.value = pwd
-        unlockRequest.value = { open: false, onUnlock: () => {} }
+        unlockRequest.value = { open: false, message: "", onUnlock: () => {} }
         retry()
       },
     }
@@ -145,9 +147,11 @@ export function useFiles() {
 
       if (resp.status === 401) {
         const errData = await resp.json().catch(() => null)
-        if (errData?.error?.code === "share_password_required") {
+        // 首次提示（share_password_required）与密码错误（share_password_incorrect）
+        // 都回到解锁弹窗，并把服务端可读消息带过去
+        if (errData?.error?.code === "share_password_required" || errData?.error?.code === "share_password_incorrect") {
           loading.value = false
-          requestUnlock(() => loadFiles(dir, opts))
+          requestUnlock(() => loadFiles(dir, opts), errData?.error?.message || "")
           return
         }
         throw new Error(errData?.error?.message || "未授权访问")

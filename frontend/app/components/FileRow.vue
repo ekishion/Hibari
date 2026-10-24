@@ -9,10 +9,13 @@ const props = defineProps<{
   parentPath?: string | null
 }>()
 
-const { enterDir } = useFiles()
+const { enterDir, currentDirToken, currentDirPassword } = useFiles()
 const { openPreview } = usePreview()
 const { openShare } = useShareModals()
 const { showToast } = useToast()
+
+// 目录短链沙盒模式：访客不该看到"创建分享"入口
+const inSandbox = computed(() => !!currentDirToken.value)
 
 const isDir = computed(() => Number(props.file?.isdir) === 1)
 const name = computed(() => (props.parentPath ? "返回上级" : fileNameOf(props.file)))
@@ -35,7 +38,12 @@ const downloading = ref(false)
 async function downloadFileDirect() {
   if (downloading.value) return
   downloading.value = true
-  const streamUrl = "/api/stream?path=" + encodeURIComponent(filePath.value)
+  // 沙盒模式凭目录短链 token + 提取码换流媒体访问
+  const streamUrl =
+    "/api/stream?path=" + encodeURIComponent(filePath.value) +
+    (currentDirToken.value
+      ? "&token=" + encodeURIComponent(currentDirToken.value) + "&pwd=" + encodeURIComponent(currentDirPassword.value)
+      : "")
   try {
     const resp = await apiFetch(streamUrl, { headers: { "X-Stream-Probe": "1" } })
     if (!resp.ok) {
@@ -89,7 +97,7 @@ function onRowDblclick(e: MouseEvent) {
       <div class="file-meta">{{ metaText }}</div>
     </div>
     <div class="file-actions">
-      <template v-if="!parentPath && isDir">
+      <template v-if="!parentPath && isDir && !inSandbox">
         <button type="button" class="file-action" :aria-label="'分享文件夹 ' + name" @click.stop="openShare({ type: 'dir', path: filePath, name })">
           <AppIcon name="share-2" :size="14" />
           <span>分享</span>
@@ -100,7 +108,7 @@ function onRowDblclick(e: MouseEvent) {
           <AppIcon name="eye" :size="14" />
           <span>预览</span>
         </button>
-        <button type="button" class="file-action" :aria-label="'分享 ' + name" @click.stop="openShare({ type: 'file', path: filePath, name })">
+        <button v-if="!inSandbox" type="button" class="file-action" :aria-label="'分享 ' + name" @click.stop="openShare({ type: 'file', path: filePath, name })">
           <AppIcon name="share-2" :size="14" />
           <span>分享</span>
         </button>

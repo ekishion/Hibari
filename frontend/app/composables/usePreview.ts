@@ -109,6 +109,19 @@ function navigatePreview(delta: number) {
   loadPreviewContent("image", item.path, item.name, requireLogin, showToast)
 }
 
+// 沙盒访客 401（token 失效/提取码变更）不弹管理员登录框，改提示可读错误
+async function previewUnauthorized(
+  resp: Response,
+  inSandbox: boolean,
+  requireLogin: (message?: string) => void,
+  showToast: (message: string, type: "error" | "warning" | "success" | "info") => void,
+) {
+  closePreview()
+  const message = await parseAPIError(resp, await resp.text())
+  if (inSandbox) showToast(message, "error")
+  else requireLogin(message)
+}
+
 async function loadPreviewContent(
   kind: PreviewKind,
   filePath: string,
@@ -116,6 +129,12 @@ async function loadPreviewContent(
   requireLogin: (message?: string) => void,
   showToast: (message: string, type: "error" | "warning" | "success" | "info") => void,
 ) {
+  // 沙盒模式（目录短链）下预览请求需携带 token + 提取码凭证
+  const { currentDirToken, currentDirPassword } = useFiles()
+  const inSandbox = !!currentDirToken.value
+  const sandboxPayload = inSandbox
+    ? { token: currentDirToken.value, password: currentDirPassword.value }
+    : {}
   state.seq++
   const seq = state.seq
   state.kind = kind
@@ -130,11 +149,10 @@ async function loadPreviewContent(
       const resp = await apiFetch("/api/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: filePath }),
+        body: JSON.stringify({ path: filePath, ...sandboxPayload }),
       })
       if (resp.status === 401) {
-        closePreview()
-        requireLogin(await parseAPIError(resp, await resp.text()))
+        await previewUnauthorized(resp, inSandbox, requireLogin, showToast)
         return
       }
       if (!resp.ok) throw new Error(await parseAPIError(resp, await resp.text()))
@@ -148,11 +166,10 @@ async function loadPreviewContent(
       const resp = await apiFetch("/api/text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: filePath }),
+        body: JSON.stringify({ path: filePath, ...sandboxPayload }),
       })
       if (resp.status === 401) {
-        closePreview()
-        requireLogin(await parseAPIError(resp, await resp.text()))
+        await previewUnauthorized(resp, inSandbox, requireLogin, showToast)
         return
       }
       const text = await resp.text()
@@ -168,11 +185,12 @@ async function loadPreviewContent(
       // 媒体经无状态中转接口 302 到百度直链：浏览器自动透传 Range，
       // 不经 VPS 中转流量（CSP media-src 已放行百度直链域）。
       // 先探测拿可读错误再赋值 src；全程不创建任何对外链接。
-      const streamUrl = "/api/stream?path=" + encodeURIComponent(filePath)
+      const streamUrl =
+        "/api/stream?path=" + encodeURIComponent(filePath) +
+        (inSandbox ? "&token=" + encodeURIComponent(currentDirToken.value) + "&pwd=" + encodeURIComponent(currentDirPassword.value) : "")
       const resp = await apiFetch(streamUrl, { headers: { "X-Stream-Probe": "1" } })
       if (resp.status === 401) {
-        closePreview()
-        requireLogin(await parseAPIError(resp, await resp.text()))
+        await previewUnauthorized(resp, inSandbox, requireLogin, showToast)
         return
       }
       if (!resp.ok) throw new Error(await parseAPIError(resp, await resp.text()))

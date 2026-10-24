@@ -14,14 +14,16 @@ const crumbs = computed<Crumb[]>(() => {
   const items: Crumb[] = []
   if (props.sandboxRoot) {
     const cleanRoot = props.sandboxRoot.replace(/\/+$/, "") || "/"
-    items.push({ path: cleanRoot, label: cleanRoot.split("/").pop() || "分享目录", icon: "folder" })
+    // 根目录短链的沙盒即全盘：base 归一为空串，避免 "//" 前缀判定失误
+    const base = cleanRoot === "/" ? "" : cleanRoot
+    items.push({ path: cleanRoot, label: base ? base.split("/").pop() || "分享目录" : "根目录", icon: "folder" })
     let relSub = ""
-    if (props.currentDir.startsWith(cleanRoot + "/")) {
-      relSub = props.currentDir.slice(cleanRoot.length + 1)
+    if (props.currentDir.startsWith(base + "/")) {
+      relSub = props.currentDir.slice(base.length + 1)
     }
     if (relSub) {
       const parts = relSub.split("/").filter(Boolean)
-      let acc = cleanRoot
+      let acc = base
       for (const part of parts) {
         acc += "/" + part
         items.push({ path: acc, label: part })
