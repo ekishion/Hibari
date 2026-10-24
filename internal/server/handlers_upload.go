@@ -160,8 +160,11 @@ stream:
 		writeJSONError(w, http.StatusInternalServerError, "upload_failed", "服务端接收文件失败，请重试")
 		return
 	}
-	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	// Windows 上删除仍打开的文件会因共享冲突失败，必须先关闭再删除
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
+	}()
 
 	src := io.Reader(filePart)
 	if limit > 0 {
