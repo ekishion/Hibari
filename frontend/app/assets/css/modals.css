@@ -326,6 +326,8 @@
 }
 .input-with-action input {
   flex: 1;
+  /* 允许收缩到弹性宽度以内：input 的固有宽度在移动端会把右侧按钮挤出卡片 */
+  min-width: 0;
   height: 38px;
   padding: 0 12px;
   border: 1px solid var(--border-strong);
@@ -937,6 +939,7 @@
 
 @media (max-width: 520px) {
   .upload-card { padding: 20px 16px 16px; }
+  .share-card { padding: 20px 16px 16px; }
   .upload-actions { flex-direction: column; align-items: stretch; }
   .upload-actions .btn { width: 100%; justify-content: center; }
   .upload-actions-hint { text-align: center; }
