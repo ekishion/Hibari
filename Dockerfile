@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # 阶段一：构建前端（frontend → /web/dist，见 frontend/nuxt.config.ts 的输出配置）
-FROM node:22-alpine AS frontend
+FROM node:25-alpine AS frontend
 WORKDIR /fe
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
