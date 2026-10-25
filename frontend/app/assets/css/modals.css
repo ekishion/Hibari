@@ -5,6 +5,9 @@
   inset: 0;
   z-index: 900;
   display: grid;
+  /* 列轨道限定为内容盒宽度：卡片 width:100% 不会在窄视口被自身
+     max-width / 不可断行内容撑出屏幕（否则轨道随内容增长导致溢出） */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 20px;
   background: rgba(9, 9, 11, 0.42);
