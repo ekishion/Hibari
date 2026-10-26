@@ -39,7 +39,11 @@ type Backend struct {
 	cookie string
 	appID  string
 	base   string
+	// client 用于 JSON 接口，有总超时。
 	client *http.Client
+	// dl 用于文件流，没有总超时：Timeout 覆盖响应体读取，
+	// 设了会把超过该时长的大文件下载拦腰切断。
+	dl *http.Client
 
 	// 会话凭据缓存。签名失败时整体清空重取。
 	mu      sync.Mutex
@@ -83,6 +87,8 @@ func New(cfg Config) (*Backend, error) {
 		appID:  appID,
 		base:   base,
 		client: client,
+		// 共用 Transport（连接池），但不继承总超时。
+		dl: &http.Client{Transport: client.Transport},
 	}, nil
 }
 
@@ -126,7 +132,7 @@ func (b *Backend) credentials(ctx context.Context) (credentials, error) {
 		}
 	}
 	if firstErr == nil {
-		firstErr = fmt.Errorf("无法取得会话凭据，请检查 Cookie 是否有效")
+		firstErr = fmt.Errorf("%w: 无法取得会话凭据，请检查 Cookie 是否有效", library.ErrUpstream)
 	}
 	return credentials{}, firstErr
 }
@@ -158,7 +164,7 @@ func (b *Backend) fetchCredentialsGetInfo(ctx context.Context) (credentials, err
 		return credentials{}, err
 	}
 	if len(resp.Records) == 0 {
-		return credentials{}, fmt.Errorf("getinfo 未返回用户记录")
+		return credentials{}, fmt.Errorf("%w: getinfo 未返回用户记录", library.ErrUpstream)
 	}
 	return credentials{uk: resp.Records[0].UK.String(), sk: resp.Records[0].SK}, nil
 }
@@ -299,7 +305,7 @@ func (b *Backend) Open(ctx context.Context, p string) (io.ReadCloser, error) {
 	}
 	req.Header.Set("User-Agent", internalUA)
 
-	resp, err := b.client.Do(req)
+	resp, err := b.dl.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", library.ErrUpstream, err)
 	}
@@ -389,7 +395,18 @@ func (b *Backend) signedLink(ctx context.Context, entry library.Entry) (string, 
 	return b.requestLink(ctx, entry)
 }
 
-var errAuthFailed = errors.New("身份校验失败")
+// errAuthFailed 既是「清空凭据重试」的信号，也是一个已映射的领域错误：
+// 它同时包装 ErrUpstream，所以重试仍失败时 HTTP 层能返回 502 与可操作的
+// 原因，而不是落到 default 分支变成「服务内部错误」。
+var errAuthFailed = fmt.Errorf("%w: 身份校验失败，请更新 Cookie", library.ErrUpstream)
+
+// authFailed 在保留哨兵身份的前提下附加上游给出的原因。
+func authFailed(msg string) error {
+	if msg == "" {
+		return errAuthFailed
+	}
+	return fmt.Errorf("%w: %s", errAuthFailed, msg)
+}
 
 func (b *Backend) requestLink(ctx context.Context, entry library.Entry) (string, error) {
 	cred, err := b.credentials(ctx)
@@ -402,8 +419,9 @@ func (b *Backend) requestLink(ctx context.Context, entry library.Entry) (string,
 	sign := hexMD5(entry.Meta.Hash + "_" + cred.uk + "_" + entry.Meta.ID + "_" + now)
 
 	var resp struct {
-		Errno int    `json:"errno"`
-		URL   string `json:"url"`
+		Errno   int    `json:"errno"`
+		URL     string `json:"url"`
+		ShowMsg string `json:"show_msg"`
 	}
 	err = b.getJSON(ctx, "/youth/api/locatedownload", url.Values{
 		"devuid":   {"0"},
@@ -417,7 +435,7 @@ func (b *Backend) requestLink(ctx context.Context, entry library.Entry) (string,
 		return "", err
 	}
 	if resp.Errno == -6 {
-		return "", errAuthFailed
+		return "", authFailed(resp.ShowMsg)
 	}
 	if resp.Errno != 0 {
 		return "", errnoToError(resp.Errno)

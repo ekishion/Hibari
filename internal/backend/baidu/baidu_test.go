@@ -3,6 +3,7 @@ package baidu_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +18,8 @@ import (
 type fakeUpstream struct {
 	// 路径 -> 该目录下的条目
 	files map[string][]map[string]any
+	// 非空时 locatedownload 一律返回 errno -6，用于验证凭据失效的错误映射。
+	authErr string
 }
 
 func newFake() *fakeUpstream {
@@ -69,6 +72,10 @@ func (f *fakeUpstream) handler() http.Handler {
 	})
 
 	mux.HandleFunc("/youth/api/locatedownload", func(w http.ResponseWriter, r *http.Request) {
+		if f.authErr != "" {
+			writeJSON(w, map[string]any{"errno": -6, "show_msg": f.authErr})
+			return
+		}
 		// 校验签名参数齐备，缺失即按上游行为返回 -7。
 		q := r.URL.Query()
 		if q.Get("rand") == "" || q.Get("sign") == "" || q.Get("time") == "" {
@@ -233,5 +240,52 @@ func TestCapsDeclaresReadOnly(t *testing.T) {
 func TestRequiresHTTPSBaseURL(t *testing.T) {
 	if _, err := baidu.New(baidu.Config{BaseURL: "http://pan.baidu.com"}); err == nil {
 		t.Fatal("非 https 的 base url 应被拒绝")
+	}
+}
+
+// 凭据失效重试仍失败时，返回的必须是 ErrUpstream，且带上上游给出的原因。
+// 否则 HTTP 层的错误映射会落到 default 分支，用户只看到「服务内部错误」。
+func TestAuthFailureMapsToUpstream(t *testing.T) {
+	fake := newFake()
+	fake.authErr = "签名校验失败"
+	fake.files["/"] = []map[string]any{
+		{
+			"server_filename": "a.txt",
+			"path":            "/a.txt",
+			"isdir":           0,
+			"size":            3,
+			"server_mtime":    1730000000,
+			"fs_id":           42,
+			"md5":             "deadbeef",
+		},
+	}
+	b := newBackend(t, fake)
+
+	_, err := b.DirectURL(context.Background(), "/a.txt", "ua")
+	if err == nil {
+		t.Fatal("凭据失效应报错")
+	}
+	if !errors.Is(err, library.ErrUpstream) {
+		t.Fatalf("期望 ErrUpstream，得到 %v", err)
+	}
+	if !strings.Contains(err.Error(), fake.authErr) {
+		t.Fatalf("错误消息应带上上游的 show_msg: %v", err)
+	}
+}
+
+// 凭据全部取不到时同样必须是 ErrUpstream，而不是裸错误。
+func TestMissingCredentialsMapsToUpstream(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"errno": -6})
+	}))
+	t.Cleanup(srv.Close)
+
+	b, err := baidu.New(baidu.Config{Cookie: "BDUSS=test", BaseURL: srv.URL})
+	if err != nil {
+		t.Fatalf("构造适配器: %v", err)
+	}
+	if _, err := b.DirectURL(context.Background(), "/a.txt", "ua"); !errors.Is(err, library.ErrUpstream) {
+		// 先被 Stat 拦下也无妨：任何一条路径都不能漏出裸错误。
+		t.Fatalf("期望 ErrUpstream，得到 %v", err)
 	}
 }

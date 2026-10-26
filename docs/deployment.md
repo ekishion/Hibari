@@ -138,6 +138,19 @@ hibari.example.com {
 
 Caddy 默认会传 `X-Forwarded-For`，同样需要在配置里把 Caddy 的地址加入 `trusted_proxies`。Caddy 的默认超时足够宽松，通常不用额外调整；若前面还有一层 CDN，那一层的读超时才需要单独确认。
 
+### Cloudflare
+
+服务下发严格的 CSP，浏览器会拒绝任何非本站脚本。Cloudflare 默认会在边缘往 HTML 里注入两样东西，二者都会被拦下并在控制台报 CSP 违规：
+
+| 功能 | 注入内容 | 关闭位置 |
+| --- | --- | --- |
+| Rocket Loader | 一段内联 `<script>`，用于延迟加载其他脚本 | Speed → Optimization → Rocket Loader |
+| Web Analytics | `static.cloudflareinsights.com/beacon.min.js` | Analytics → Web Analytics |
+
+这两个功能对本服务没有用处（单页应用自己会加载脚本），建议直接关闭。若确实需要 Web Analytics，只能放宽 `script-src` 与 `connect-src`，但那会削弱 XSS 防护，不推荐。
+
+另外 CDN 不应缓存 HTML，否则 CSP 与前端更新都会滞后；`/api/*` 与 `/healthz` 也应绕过缓存。
+
 ## 首次启动
 
 1. 启动服务，日志会打印监听地址。

@@ -88,14 +88,16 @@ func (s *Server) handleRaw(w http.ResponseWriter, r *http.Request) {
 
 	if s.linker != nil {
 		url, err := s.linker.DirectURL(r.Context(), p, r.UserAgent())
-		if err == nil {
-			w.Header().Set("Content-Disposition",
-				mime.FormatMediaType(disposition, map[string]string{"filename": path.Base(p)}))
-			http.Redirect(w, r, url, http.StatusFound)
+		if err != nil {
+			// 不回落 backend.Open：它内部调的就是同一个 DirectURL，
+			// 必然同样失败，只会把一次失败放大成多次上游请求。
+			writeDomainError(w, err)
 			return
 		}
-		// 直链失败回落到代理，让用户仍能拿到文件。
-		s.logf("[WARN] 获取直链失败，改用代理: %v", err)
+		w.Header().Set("Content-Disposition",
+			mime.FormatMediaType(disposition, map[string]string{"filename": path.Base(p)}))
+		http.Redirect(w, r, url, http.StatusFound)
+		return
 	}
 
 	rc, err := s.backend.Open(r.Context(), p)

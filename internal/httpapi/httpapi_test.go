@@ -2,7 +2,9 @@ package httpapi_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -17,6 +19,7 @@ import (
 	"github.com/ekishion/hibari/internal/config"
 	"github.com/ekishion/hibari/internal/httpapi"
 	"github.com/ekishion/hibari/internal/identity"
+	"github.com/ekishion/hibari/internal/library"
 	"github.com/ekishion/hibari/internal/sharing"
 	"github.com/ekishion/hibari/internal/sqlite"
 )
@@ -32,12 +35,6 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 
-	db, err := sqlite.Open(":memory:")
-	if err != nil {
-		t.Fatalf("打开数据库: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-
 	root := t.TempDir()
 	be, err := local.New(root)
 	if err != nil {
@@ -45,6 +42,21 @@ func newHarness(t *testing.T) *harness {
 	}
 	// 后注册先执行：根句柄必须先关，TempDir 才能清理干净。
 	t.Cleanup(func() { be.Close() })
+
+	h := newHarnessWithBackend(t, be)
+	h.root = root
+	return h
+}
+
+// newHarnessWithBackend 用指定后端装配服务，用于验证适配器错误如何映射为 HTTP 状态。
+func newHarnessWithBackend(t *testing.T, be library.Backend) *harness {
+	t.Helper()
+
+	db, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatalf("打开数据库: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
 
 	cfg := &config.Config{Backend: config.BackendLocal}
 	if err := cfg.Normalize(); err != nil {
@@ -73,7 +85,6 @@ func newHarness(t *testing.T) *harness {
 		t:      t,
 		server: ts,
 		client: &http.Client{Jar: jar},
-		root:   root,
 	}
 }
 
@@ -276,6 +287,49 @@ func TestFileLifecycle(t *testing.T) {
 		map[string]any{"paths": []string{"/docs"}})
 	if status, _ := h.do(http.MethodGet, "/api/files?dir=/docs", nil); status == http.StatusOK {
 		t.Fatal("目录已删除，列表不应成功")
+	}
+}
+
+// linkerBackend 的直链永远失败，用于验证错误映射不会退化成 500。
+type linkerBackend struct {
+	library.Backend
+	err error
+}
+
+func (b linkerBackend) DirectURL(context.Context, string, string) (string, error) {
+	return "", b.err
+}
+
+// 直链失败必须直接返回上游错误，不能再回落 backend.Open 重试一次。
+func TestRawDirectLinkFailureIsUpstreamError(t *testing.T) {
+	be, err := local.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("创建本地后端: %v", err)
+	}
+	t.Cleanup(func() { be.Close() })
+
+	h := newHarnessWithBackend(t, linkerBackend{
+		Backend: be,
+		err:     fmt.Errorf("%w: 身份校验失败，请更新 Cookie", library.ErrUpstream),
+	})
+	h.setupAndLogin()
+
+	data := h.mustStatus(http.StatusBadGateway, http.MethodGet, "/api/files/raw?path=/a.txt", nil)
+
+	var body struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(data, &body); err != nil {
+		t.Fatalf("解析错误体: %v", err)
+	}
+	if body.Error.Code != "upstream_failed" {
+		t.Fatalf("期望 upstream_failed，实际 %q", body.Error.Code)
+	}
+	if !strings.Contains(body.Error.Message, "Cookie") {
+		t.Fatalf("错误消息应保留可操作的原因，实际 %q", body.Error.Message)
 	}
 }
 

@@ -66,6 +66,8 @@ func (s *Server) setSecurityHeaders(w http.ResponseWriter) {
 	h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 	h.Set("Content-Security-Policy",
 		"default-src 'self'; "+
+			"script-src 'self'; "+
+			"connect-src 'self'; "+
 			"img-src 'self' data: blob:; "+
 			"media-src 'self' blob: https://*.baidu.com https://*.baidupcs.com https://*.bdstatic.com; "+
 			"style-src 'self' 'unsafe-inline'; "+
