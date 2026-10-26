@@ -1,0 +1,35 @@
+# 构建与运行时产物
+/bin/
+/dist/
+/web/dist/
+/web/node_modules/
+*.exe
+*.test
+*.out
+
+# 前端构建产物由 pnpm build 生成，不提交；只保留占位文件让 go:embed 有内容可嵌
+/internal/httpapi/assets/assets/
+/internal/httpapi/assets/index.html
+!/internal/httpapi/assets/.gitkeep
+
+# 配置与本地数据
+config.json
+.env
+.env.*
+!.env.example
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# Go 缓存
+.gocache/
+.gotmp/
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+.zcode/

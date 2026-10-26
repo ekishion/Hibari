@@ -1,0 +1,4 @@
+# esbuild 的 postinstall 需要执行，用来落地对应平台的原生二进制。
+# pnpm 10 起依赖安装脚本默认被阻止，CI 会因此报 ERR_PNPM_IGNORED_BUILDS。
+onlyBuiltDependencies:
+  - esbuild

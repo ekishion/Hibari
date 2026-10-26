@@ -1,0 +1,33 @@
+# 构建产物与依赖
+bin/
+dist/
+web/dist/
+web/node_modules/
+
+# 仓库与文档，不参与构建
+.git/
+.github/
+docs/
+*.md
+
+# 配置与运行时数据
+config.json
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# 编辑器与本地工具
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+.zcode/
+
+# Go 缓存
+.gocache/
+.gotmp/

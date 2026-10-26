@@ -1,0 +1,53 @@
+/* 设计令牌：颜色、间距、字阶、圆角。
+   深色只写一份——light-dark() 让两套主题共用同一组变量。 */
+:root {
+  color-scheme: light dark;
+
+  --bg: light-dark(#f4f5f7, #0a0a0b);
+  --surface: light-dark(#ffffff, #131315);
+  --surface-2: light-dark(#fafafa, #1b1b1f);
+  --text: light-dark(#0a0a0a, #fafafa);
+  --text-2: light-dark(#52525b, #a1a1aa);
+  --text-3: light-dark(#8b8b93, #71717a);
+  --border: light-dark(#e7e7ea, #26262b);
+  --border-strong: light-dark(#d0d0d6, #3a3a42);
+  --accent: light-dark(#2563eb, #60a5fa);
+  --accent-ink: light-dark(#ffffff, #0a0a0b);
+  --danger: light-dark(#dc2626, #f87171);
+  --success: light-dark(#16a34a, #4ade80);
+
+  /* 4px 基准间距 */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* 1.25 字阶 */
+  --t-xs: 12px;
+  --t-sm: 14px;
+  --t-md: 16px;
+  --t-lg: 20px;
+  --t-xl: 25px;
+  --t-2xl: 31px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-full: 999px;
+
+  --shadow-1: 0 1px 2px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4));
+  --shadow-2: 0 4px 16px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.5));
+  --shadow-3: 0 16px 48px light-dark(rgb(0 0 0 / 0.14), rgb(0 0 0 / 0.6));
+
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --header-h: 56px;
+  --content-max: 1080px;
+}

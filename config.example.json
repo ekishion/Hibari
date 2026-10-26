@@ -1,0 +1,14 @@
+{
+  "addr": "127.0.0.1:4172",
+  "backend": "local",
+  "local_root": "data/files",
+  "db_path": "data/hibari.db",
+  "allowed_paths": [],
+  "rate_limit_per_second": 10,
+  "trusted_proxies": [],
+  "secure_cookie": false,
+  "session_ttl_seconds": 604800,
+  "share_ttl_seconds": 86400,
+  "upload_max_mb": 1024,
+  "share_max_uses": 0
+}
