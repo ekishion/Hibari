@@ -84,12 +84,8 @@ function openEntry(entry: Entry) {
     loadDir(entry.path)
     return
   }
-  // 单文件分享直接触发下载；目录内文件在新标签预览。
-  if (!isDir.value) {
-    location.href = rawURL('/', true)
-    return
-  }
-  window.open(rawURL(entry.path), '_blank', 'noopener')
+  // 分享页的用途是取走文件：目录里的文件也直接下载，不在新标签里在线预览。
+  location.href = rawURL(isDir.value ? entry.path : '/', true)
 }
 
 onMounted(unlock)

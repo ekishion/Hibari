@@ -13,6 +13,8 @@
   --border-strong: light-dark(#d0d0d6, #3a3a42);
   --accent: light-dark(#2563eb, #60a5fa);
   --accent-ink: light-dark(#ffffff, #0a0a0b);
+  /* 选中底色。浅色下低透明度的蓝在白底上几乎看不出来，改用不透明混色才拉得开。 */
+  --selected: color-mix(in oklab, var(--accent) 15%, var(--surface));
   --danger: light-dark(#dc2626, #f87171);
   --success: light-dark(#16a34a, #4ade80);
 

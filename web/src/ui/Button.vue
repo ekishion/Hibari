@@ -101,4 +101,12 @@ button:disabled {
     transform: rotate(360deg);
   }
 }
+
+/* 触控目标不小于 44px。 */
+@media (max-width: 640px) {
+  .sm,
+  .md {
+    height: 44px;
+  }
+}
 </style>

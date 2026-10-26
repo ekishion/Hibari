@@ -82,6 +82,34 @@ pre {
   border-radius: var(--r-sm);
 }
 
+/* 滚动条：细、无箭头、随主题变色，与界面其余部分的克制风格一致。 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+  background-clip: content-box;
+}
+
 /* 数字列对齐，避免文件大小、日期跳动 */
 .tnum {
   font-variant-numeric: tabular-nums;

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, ApiFailure } from '@/api/client'
 import type { Entry, Quota } from '@/api/types'
 import { session } from '@/composables/useSession'
-import { breadcrumbs, formatBytes, parentOf } from '@/utils/format'
+import { breadcrumbs, formatBytes, parentOf, previewKind } from '@/utils/format'
 import { toast } from '@/ui/toast'
 import Button from '@/ui/Button.vue'
 import Dialog from '@/ui/Dialog.vue'
@@ -52,6 +52,9 @@ const visible = computed(() => {
 
 const selectedEntries = computed(() => entries.value.filter((e) => selected.value.has(e.path)))
 
+/** 预览里可左右切换的范围：当前筛选结果中的文件，顺序与列表一致。 */
+const previewables = computed(() => visible.value.filter((e) => !e.is_dir && previewKind(e.name) !== 'none'))
+
 async function load() {
   loading.value = true
   loadError.value = ''
@@ -88,6 +91,11 @@ function open(entry: Entry) {
   }
   previewTarget.value = entry
   previewOpen.value = true
+}
+
+/** 单击选中（替换现有选择），Ctrl/Cmd 单击由 FileRow 转为 toggle。 */
+function select(entry: Entry) {
+  selected.value = new Set([entry.path])
 }
 
 function toggle(entry: Entry) {
@@ -180,22 +188,27 @@ onMounted(async () => {
   <div class="page">
     <div class="toolbar">
       <div class="crumbs">
-        <button v-if="!atRoot" type="button" class="back" aria-label="返回上级" @click="navigate(parentOf(dir))">
-          <ChevronLeft :size="18" />
-        </button>
-        <nav aria-label="路径">
-          <template v-for="(crumb, i) in trail" :key="crumb.path">
-            <span v-if="i > 0" class="sep" aria-hidden="true">/</span>
-            <button
-              type="button"
-              class="crumb"
-              :aria-current="i === trail.length - 1 ? 'page' : undefined"
-              @click="navigate(crumb.path)"
-            >
-              {{ crumb.name }}
-            </button>
-          </template>
-        </nav>
+        <!-- 有选中时路径让位给计数：同一行同一高度，计数正好落在最左端，
+             工具栏不会因此多出一行、把列表推下去。 -->
+        <span v-if="selectedEntries.length" class="count">已选 {{ selectedEntries.length }} 项</span>
+        <template v-else>
+          <button v-if="!atRoot" type="button" class="back" aria-label="返回上级" @click="navigate(parentOf(dir))">
+            <ChevronLeft :size="18" />
+          </button>
+          <nav aria-label="路径">
+            <template v-for="(crumb, i) in trail" :key="crumb.path">
+              <span v-if="i > 0" class="sep" aria-hidden="true">/</span>
+              <button
+                type="button"
+                class="crumb"
+                :aria-current="i === trail.length - 1 ? 'page' : undefined"
+                @click="navigate(crumb.path)"
+              >
+                {{ crumb.name }}
+              </button>
+            </template>
+          </nav>
+        </template>
       </div>
 
       <div class="actions">
@@ -204,19 +217,28 @@ onMounted(async () => {
           <input v-model="filter" type="search" placeholder="筛选当前目录" aria-label="筛选文件" />
         </label>
 
-        <template v-if="canWrite">
-          <Button size="sm" variant="ghost" @click="nameTarget = null; nameOpen = true">
+        <!-- 有选中时原地换成批量操作：同一行同一高度，列表不会位移。 -->
+        <template v-if="selectedEntries.length">
+          <Button size="sm" variant="ghost" @click="clearSelection">取消</Button>
+          <Button v-if="selectedEntries.length === 1" size="sm" variant="ghost" @click="askRename">
+            重命名
+          </Button>
+          <Button v-if="selectedEntries.length === 1" size="sm" variant="ghost" @click="askShare">
+            分享
+          </Button>
+          <Button v-if="canWrite" size="sm" variant="danger" @click="removeOpen = true">删除</Button>
+        </template>
+        <template v-else>
+          <Button v-if="canWrite" size="sm" variant="ghost" @click="nameTarget = null; nameOpen = true">
             <FolderPlus :size="16" />
             新建
           </Button>
-        </template>
-        <template v-if="canUpload">
-          <Button size="sm" @click="pickFiles">
+          <Button v-if="canUpload" size="sm" @click="pickFiles">
             <Upload :size="16" />
             上传
           </Button>
-          <input ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
         </template>
+        <input v-if="canUpload" ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
       </div>
     </div>
 
@@ -230,14 +252,6 @@ onMounted(async () => {
     <div v-if="uploadProgress !== null" class="progress" role="status">
       <div class="fill" :style="{ width: `${uploadProgress}%` }" />
       <span>上传中 {{ uploadProgress }}%</span>
-    </div>
-
-    <div v-if="selectedEntries.length" class="bulk">
-      <span>已选 {{ selectedEntries.length }} 项</span>
-      <Button size="sm" variant="ghost" @click="clearSelection">取消选择</Button>
-      <Button v-if="selectedEntries.length === 1" size="sm" variant="ghost" @click="askRename">重命名</Button>
-      <Button v-if="selectedEntries.length === 1" size="sm" variant="ghost" @click="askShare">分享</Button>
-      <Button v-if="canWrite" size="sm" variant="danger" @click="removeOpen = true">删除</Button>
     </div>
 
     <div class="table" role="table" aria-label="文件列表" @dragover.prevent @drop.prevent="onDrop">
@@ -267,6 +281,7 @@ onMounted(async () => {
           :entry="entry"
           :selected="selected.has(entry.path)"
           @open="open"
+          @select="select"
           @toggle="toggle"
         />
       </template>
@@ -274,7 +289,12 @@ onMounted(async () => {
 
     <p v-if="canUpload" class="drop-hint">可以把文件拖到此处上传</p>
 
-    <PreviewDialog v-if="previewTarget" v-model:open="previewOpen" :path="previewTarget.path" :name="previewTarget.name" />
+    <PreviewDialog
+      v-if="previewTarget"
+      v-model:open="previewOpen"
+      :entry="previewTarget"
+      :siblings="previewables"
+    />
     <NameDialog v-model:open="nameOpen" :target="nameTarget" :dir="dir" @created="load" @renamed="load" />
     <ShareDialog v-model:open="shareOpen" :target="shareTarget" />
 
@@ -298,8 +318,10 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--s-4);
   max-width: var(--content-max);
+  /* 至少撑满首屏，拖拽提示才能落到页面底部而不是紧贴表格。 */
+  min-height: calc(100dvh - var(--header-h));
   margin: 0 auto;
-  padding: var(--s-6) var(--s-4) var(--s-12);
+  padding: var(--s-6) var(--s-4);
 }
 
 .toolbar {
@@ -314,7 +336,6 @@ onMounted(async () => {
   align-items: center;
   gap: var(--s-1);
   min-width: 0;
-  flex: 1;
 }
 
 .back {
@@ -365,6 +386,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: var(--s-2);
+  margin-left: auto;
 }
 
 .search {
@@ -438,20 +460,11 @@ onMounted(async () => {
   font-size: var(--t-xs);
 }
 
-.bulk {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  font-size: var(--t-sm);
-}
-
-.bulk span:first-child {
-  margin-right: auto;
+.count {
   color: var(--text-2);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .table {
@@ -495,7 +508,10 @@ onMounted(async () => {
   color: var(--danger);
 }
 
+/* 拖拽提示固定到页面底部：margin-top:auto 吃掉表格之后的全部空白。 */
 .drop-hint {
+  margin-top: auto;
+  padding-top: var(--s-6);
   color: var(--text-3);
   font-size: var(--t-xs);
   text-align: center;
@@ -537,11 +553,14 @@ onMounted(async () => {
   }
 
   .actions {
+    margin-left: 0;
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 
+  /* 搜索独占一行，否则会被并排的按钮挤到只剩图标宽度。 */
   .search {
-    flex: 1;
+    flex: 1 1 100%;
     min-width: 0;
   }
 

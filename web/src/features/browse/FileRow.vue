@@ -5,7 +5,23 @@ import { formatBytes, formatTime, previewKind } from '@/utils/format'
 import { File, Folder, Image, Film, Music, FileText } from 'lucide-vue-next'
 
 const props = defineProps<{ entry: Entry; selected: boolean }>()
-const emit = defineEmits<{ open: [Entry]; toggle: [Entry] }>()
+const emit = defineEmits<{ open: [Entry]; select: [Entry]; toggle: [Entry] }>()
+
+/**
+ * 单击选中，再次单击同一行才打开。双击在触屏上不可靠，
+ * 而「选中后再点一次」是移动端文件管理器的通行做法，也不需要计时器。
+ */
+function onClick(e: MouseEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    emit('toggle', props.entry)
+    return
+  }
+  if (props.selected) {
+    emit('open', props.entry)
+    return
+  }
+  emit('select', props.entry)
+}
 
 const icon = computed(() => {
   if (props.entry.is_dir) return Folder
@@ -30,7 +46,7 @@ const icon = computed(() => {
     :class="{ selected }"
     role="row"
     tabindex="0"
-    @click="emit('open', entry)"
+    @click="onClick"
     @keydown.enter.prevent="emit('open', entry)"
     @keydown.space.prevent="emit('toggle', entry)"
   >
@@ -62,7 +78,6 @@ const icon = computed(() => {
   gap: var(--s-3);
   min-height: 44px;
   padding: 0 var(--s-3);
-  border-radius: var(--r-md);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
 }
@@ -74,10 +89,12 @@ const icon = computed(() => {
 .row:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+  border-radius: 0;
 }
 
+/* 行与行紧贴，各自带圆角会在相邻选中行之间留下缺口，整块选中应当是连续色带。 */
 .row.selected {
-  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  background: var(--selected);
 }
 
 .check {

@@ -89,6 +89,13 @@ input:disabled {
   opacity: 0.6;
 }
 
+/* 触控目标不小于 44px。 */
+@media (max-width: 640px) {
+  input {
+    height: 44px;
+  }
+}
+
 .hint,
 .error {
   font-size: var(--t-xs);
